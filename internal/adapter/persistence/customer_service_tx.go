@@ -19,7 +19,7 @@ type RegistrationServiceTx struct {
 }
 
 func (s RegistrationServiceTx) FindAllResgistrations(ctx context.Context) (customers []*model.Customer, err error) {
-	s.tm.Transactionless(ctx, func(ctx context.Context) error {
+	s.tm.None(ctx).Do(func(ctx context.Context) error {
 		customers, err = s.next.FindAllResgistrations(ctx)
 		return err
 	})
@@ -27,7 +27,7 @@ func (s RegistrationServiceTx) FindAllResgistrations(ctx context.Context) (custo
 }
 
 func (s RegistrationServiceTx) Register(ctx context.Context, registerDto usecase.Registration) (customer *model.Customer, err error) {
-	s.tm.Transaction(ctx, func(ctx context.Context) error {
+	s.tm.Current(ctx).Do(func(ctx context.Context) error {
 		customer, err = s.next.Register(ctx, registerDto)
 		return err
 	})

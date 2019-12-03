@@ -28,6 +28,18 @@ type Tx interface {
 	Commit() error
 }
 
+type TxFunc func(context.Context) error
+
+type Transactioner interface {
+	Do(TxFunc) error
+}
+
+type TxHandler func(TxFunc) error
+
+func (h TxHandler) Do(fn TxFunc) error {
+	return h(fn)
+}
+
 func setConn(ctx context.Context, tx Conn) context.Context {
 	return context.WithValue(ctx, id, tx)
 }
@@ -48,68 +60,58 @@ type TxManager struct {
 	db *sql.DB
 }
 
-func (tm *TxManager) Transaction(ctx context.Context, handler func(context.Context) error) error {
-	return tm.transaction(ctx, true, handler)
-}
-
-func (tm *TxManager) NewTransaction(ctx context.Context, handler func(context.Context) error) error {
-	return tm.transaction(ctx, false, handler)
-}
-
-func (tm *TxManager) transaction(ctx context.Context, useCurrent bool, handler func(context.Context) error) error {
-	var isNew bool
-
+func (tm *TxManager) Current(ctx context.Context) Transactioner {
 	conn := GetConn(ctx)
-	tx, ok := conn.(Tx)
+	if conn == nil {
+		return tm.makeTxHandler(ctx)
+	}
 
-	var txCtx context.Context
-	if !ok || !useCurrent {
-		// No ongoing transaction
+	return tm.makeNoTxHandler(ctx)
+}
+
+func (tm *TxManager) New(ctx context.Context) Transactioner {
+	return tm.makeTxHandler(ctx)
+}
+
+func (tm *TxManager) None(ctx context.Context) Transactioner {
+	return tm.makeNoTxHandler(ctx)
+}
+
+func (tm *TxManager) makeNoTxHandler(ctx context.Context) Transactioner {
+	h := func(fn TxFunc) error {
+		return fn(ctx)
+	}
+	return TxHandler(h)
+}
+
+func (tm *TxManager) makeTxHandler(ctx context.Context) Transactioner {
+
+	h := func(fn TxFunc) error {
 		// Begin Transaction
-		var err error
-		tx, err = tm.db.Begin()
+		tx, err := tm.db.Begin()
 		if err != nil {
 			return err
 		}
-		txCtx = setConn(ctx, tx)
-		isNew = true
-	}
+		txCtx := setConn(ctx, tx)
+		defer func() {
+			err := recover()
+			if err != nil {
+				tx.Rollback()
+				panic(err) // up you go
+			}
+		}()
 
-	defer func() {
-		err := recover()
-		if err != nil {
-			tx.Rollback()
-			panic(err) // up you go
-		}
-	}()
+		err = fn(txCtx)
 
-	err := handler(txCtx)
-
-	if isNew {
 		if err == nil {
 			tx.Commit()
 		} else {
 			tx.Rollback()
 		}
+
+		return err
 	}
-	return err
-}
-
-func (tm *TxManager) Transactionless(ctx context.Context, handler func(context.Context) error) error {
-	var conn = GetConn(ctx)
-
-	var txCtx context.Context
-	if conn == nil {
-		// No ongoing connection
-		// Use the connection pool
-		txCtx = setConn(ctx, tm.db)
-	}
-
-	return handler(txCtx)
-}
-
-func (tm *TxManager) Pool() *sql.DB {
-	return tm.db
+	return TxHandler(h)
 }
 
 func Pool(driverName string, dataSourceName string) (*sql.DB, error) {
