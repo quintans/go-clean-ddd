@@ -1,0 +1,9 @@
+version: '3.4'
+
+services:
+  postgres:
+    image: postgres:9.6.8
+    ports:
+      - "5432:5432"
+    environment:
+      - POSTGRES_PASSWORD=secret

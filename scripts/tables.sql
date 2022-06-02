@@ -1,9 +1,0 @@
-CREATE TABLE CUSTOMER (
-	UUID VARCHAR(36),
-	FIRST_NAME VARCHAR(50),
-	LAST_NAME VARCHAR(50),
-	EMAIL VARCHAR(255),
-	PRIMARY KEY(UUID)
-);
-
-insert into CUSTOMER (UUID, FIRST_NAME, LAST_NAME, EMAIL) values('b4f990a2-707b-41ae-aa19-9224fb8d2d7e', 'Paulo', 'Pereira', 'paulo.pereira@karhoo.com');
