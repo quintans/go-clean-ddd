@@ -1,6 +1,31 @@
 # go-clean-ddd 
 Example of Clean Architecture + DDD + CQRS in go
 
+To demonstrate the of several architecture patterns a simple demo is provided.
+
+## Demo
+This demo simulates a customer registration.
+
+It intends to demonstrate the following:
+- project structure 
+- [outbox pattern](https://microservices.io/patterns/data/transactional-outbox.html) to update database and send events
+- integration event, calling an external gateway: fake message queue
+- domain event for dependency between 2 aggregates (synchronous)
+- unit of work across 2 aggregates
+- optimistic locking
+
+The business rules  are the following:
+- When a new customer wants to register, it will provide an email. If the email is unique a new registration aggregate is created.
+- Then the customer will receive an email (not really) with an url that needs to be called to create the customer account
+- After the successfull activation the customer can complete the rest of the information
+
+How:
+- create a registration record if the email is unique
+- When saving a new registration, a new event is stored in the outbox table, in the same transaction.
+- A background process pools the new event and publishes to a message queue.
+For demonstration purposes the queue is fake and the customer validation will be also embedded in this fake queue.
+- when the email is validated in the registration aggregate, a domain event is fired and handled by the customer aggregate. All we be saved in the same transaction. 
+
 > There are many ways to structure a project that follows the above architecture.
 > 
 > The most important thing is to keep the business logic separated from the technological details and to respect the dependency hierarchy between the different layers.

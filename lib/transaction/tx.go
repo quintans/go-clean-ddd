@@ -5,6 +5,8 @@ import (
 	"database/sql"
 	"errors"
 	"fmt"
+
+	"github.com/quintans/go-clean-ddd/lib/event"
 )
 
 var ErrTxNotFound = errors.New("no transaction found in context")
@@ -18,54 +20,50 @@ type Tx interface {
 	Commit() error
 }
 
-type TxFunc[T Tx] func(context.Context, T) error
+type TxFunc[T Tx] func(context.Context, T) ([]event.DomainEvent, error)
 
 func setTxToContext(ctx context.Context, tx Tx) context.Context {
 	return context.WithValue(ctx, txID, tx)
 }
 
-func getTxFromContext(ctx context.Context) interface{} {
-	return ctx.Value(txID)
+func GetTxFromContext[T Tx](ctx context.Context) (T, error) {
+	tx, ok := ctx.Value(txID).(T)
+	if !ok {
+		var zero T
+		return zero, ErrTxNotFound
+	}
+	return tx, nil
 }
 
 type Transactioner[T Tx] interface {
 	Current(ctx context.Context, fn TxFunc[T]) error
 	New(ctx context.Context, fn TxFunc[T]) error
-	DB() *sql.DB
 }
 
 type Transaction[T Tx] struct {
-	db        *sql.DB
-	txFactory func(context.Context, *sql.DB) (Tx, error)
+	txFactory func(context.Context) (Tx, error)
+	eventBus  event.EventBuser
 }
 
-type TxOption[T Tx] func(*Transaction[T])
-
-func WithTxFactory[T Tx](fn func(context.Context, *sql.DB) (Tx, error)) TxOption[T] {
-	return func(tx *Transaction[T]) {
-		tx.txFactory = fn
-	}
-}
-
-func New[T Tx](db *sql.DB, options ...TxOption[T]) *Transaction[T] {
-	tm := &Transaction[T]{
-		db: db,
-		txFactory: func(ctx context.Context, d *sql.DB) (Tx, error) {
-			return d.BeginTx(ctx, nil)
+func Default(db *sql.DB, eventBus event.EventBuser) *Transaction[*sql.Tx] {
+	tm := &Transaction[*sql.Tx]{
+		txFactory: func(ctx context.Context) (Tx, error) {
+			return db.BeginTx(ctx, nil)
 		},
-	}
-	for _, o := range options {
-		o(tm)
+		eventBus: eventBus,
 	}
 	return tm
 }
 
-func (tm Transaction[T]) DB() *sql.DB {
-	return tm.db
+func New[T Tx](txFactory func(context.Context) (Tx, error), eventBus event.EventBuser) *Transaction[T] {
+	return &Transaction[T]{
+		txFactory: txFactory,
+		eventBus:  eventBus,
+	}
 }
 
 func (tm *Transaction[T]) Current(ctx context.Context, fn TxFunc[T]) error {
-	t := getTxFromContext(ctx)
+	t := ctx.Value(txID)
 	if t == nil {
 		return tm.makeTxHandler(ctx, fn)
 	}
@@ -75,7 +73,14 @@ func (tm *Transaction[T]) Current(ctx context.Context, fn TxFunc[T]) error {
 		return ErrTxNotFound
 	}
 
-	return fn(ctx, tx)
+	events, err := fn(ctx, tx)
+	if err != nil {
+		return err
+	}
+	if events != nil && tm.eventBus != nil {
+		return tm.eventBus.Fire(ctx, events...)
+	}
+	return nil
 }
 
 func (tm *Transaction[T]) New(ctx context.Context, fn TxFunc[T]) error {
@@ -84,7 +89,7 @@ func (tm *Transaction[T]) New(ctx context.Context, fn TxFunc[T]) error {
 
 func (tm *Transaction[T]) makeTxHandler(ctx context.Context, fn TxFunc[T]) error {
 	// Begin Transaction
-	t, err := tm.txFactory(ctx, tm.db)
+	t, err := tm.txFactory(ctx)
 	if err != nil {
 		return err
 	}
@@ -102,7 +107,16 @@ func (tm *Transaction[T]) makeTxHandler(ctx context.Context, fn TxFunc[T]) error
 		}
 	}()
 
-	err = fn(c, tx)
+	events, err := fn(c, tx)
+	if err != nil {
+		return err
+	}
+	if events != nil && tm.eventBus != nil {
+		err := tm.eventBus.Fire(ctx, events...)
+		if err != nil {
+			return err
+		}
+	}
 
 	if err == nil {
 		_ = tx.Commit()

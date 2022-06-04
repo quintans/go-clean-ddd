@@ -1,4 +1,4 @@
-package domain
+package vo
 
 import (
 	"fmt"
@@ -28,7 +28,7 @@ type Email struct {
 }
 
 func (e Email) String() string {
-	return fmt.Sprintf("Email{email: %+v}", e.email)
+	return e.email
 }
 
 var emailRe = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$")
