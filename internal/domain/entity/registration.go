@@ -35,7 +35,7 @@ func NewRegistration(ctx context.Context, email vo.Email, policy UniqueEmailPoli
 		email:    email,
 		verified: false,
 	}
-	r.AddEvent(event.NewRegistration{Id: id})
+	r.addEvent(event.NewRegistration{Id: id})
 	return r, nil
 }
 
@@ -57,7 +57,7 @@ func (r *Registration) Verify() {
 		return
 	}
 	r.verified = true
-	r.AddEvent(event.EmailVerified{Email: r.email})
+	r.addEvent(event.EmailVerified{Email: r.email})
 }
 
 func (r Registration) ID() string {

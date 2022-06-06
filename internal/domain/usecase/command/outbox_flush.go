@@ -16,7 +16,7 @@ type FlushOutboxHandler interface {
 
 type FlushOutbox struct {
 	outboxRepository usecase.OutboxRepository
-	notifier         usecase.Notifier
+	publisher        usecase.Publisher
 }
 
 func NewFlushOutbox(outboxRepository usecase.OutboxRepository) FlushOutbox {
@@ -26,21 +26,24 @@ func NewFlushOutbox(outboxRepository usecase.OutboxRepository) FlushOutbox {
 }
 
 func (f FlushOutbox) Handle(ctx context.Context) error {
-	outboxes, err := f.outboxRepository.LockAndLoad(ctx)
-	if errors.Is(err, usecase.ErrModelNotFound) {
-		return nil
-	}
-	for _, o := range outboxes {
-		switch o.Kind() {
-		case event.EventNewRegistration:
-			if err := f.handleEventNewRegistration(ctx, o); err != nil {
-				return err
+	for {
+		err := f.outboxRepository.Consume(ctx, func(events []entity.Outbox) error {
+			for _, o := range events {
+				switch o.Kind() {
+				case event.EventNewRegistration:
+					if err := f.handleEventNewRegistration(ctx, o); err != nil {
+						return err
+					}
+				default:
+					return errors.New("unknown event in outbox: " + o.Kind())
+				}
 			}
-		default:
-			return errors.New("unknown event in outbox: " + o.Kind())
+			return nil
+		})
+		if errors.Is(err, usecase.ErrModelNotFound) {
+			return nil
 		}
 	}
-	return nil
 }
 
 func (f FlushOutbox) handleEventNewRegistration(ctx context.Context, o entity.Outbox) error {
@@ -49,5 +52,5 @@ func (f FlushOutbox) handleEventNewRegistration(ctx context.Context, o entity.Ou
 	if err != nil {
 		return err
 	}
-	return f.notifier.Confirm(ctx, event.Email.String(), event.Id)
+	return f.publisher.Publish(ctx, usecase.NewRegistration{Id: event.Id, Email: event.Email})
 }

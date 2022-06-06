@@ -5,7 +5,6 @@ import (
 	"log"
 	"os"
 	"os/signal"
-	"sync"
 	"syscall"
 	"time"
 
@@ -14,17 +13,17 @@ import (
 	ucEvent "github.com/quintans/go-clean-ddd/internal/domain/usecase/event"
 	"github.com/quintans/go-clean-ddd/internal/domain/usecase/query"
 	"github.com/quintans/go-clean-ddd/internal/infra"
-	"github.com/quintans/go-clean-ddd/internal/infra/controller/outbox"
 	"github.com/quintans/go-clean-ddd/internal/infra/controller/web"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres"
 	"github.com/quintans/go-clean-ddd/lib/event"
 	"github.com/quintans/go-clean-ddd/lib/transaction"
+	"github.com/quintans/toolkit/latch"
 )
 
 const dbDriver = "postgres"
 
 func main() {
-	var wg sync.WaitGroup
+	lock := latch.NewCountDownLatch()
 
 	db, err := infra.NewDB()
 	if err != nil {
@@ -52,23 +51,23 @@ func main() {
 
 	registrationWrite := postgres.NewRegistrationRepository(trans)
 	createRegistration := command.NewCreateRegistration(registrationWrite, customerRead)
+	confirmRegistration := command.NewConfirmRegistration(registrationWrite)
 
 	emailVerifiedHandler := ucEvent.NewEmailVerifiedHandler(customerWrite, customerRead)
 	eb.AddHandler(emailVerifiedHandler)
 
 	outboxRepository := postgres.NewOutboxRepository(trans, 5)
 	outboxUC := command.NewFlushOutbox(outboxRepository)
-	outboxController := outbox.NewOutboxController(outboxUC)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	infra.StartOutboxRelay(ctx, 5*time.Second, outboxController)
+	infra.StartOutboxScheduler(ctx, lock, 5*time.Second, outboxUC)
 
-	registrationController := web.NewRegistrationController(createRegistration)
-	infra.StartWebServer(ctx, &wg, customerController, registrationController)
+	registrationController := web.NewRegistrationController(createRegistration, confirmRegistration)
+	infra.StartWebServer(ctx, lock, ":8080", customerController, registrationController)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
 	<-quit
 	cancel()
-	latch.WaitWithTimeout(3 * time.Second)
+	lock.WaitWithTimeout(3 * time.Second)
 }

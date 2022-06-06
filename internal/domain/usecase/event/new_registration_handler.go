@@ -7,7 +7,7 @@ import (
 	"github.com/pkg/errors"
 	"github.com/quintans/go-clean-ddd/internal/domain/entity"
 	devent "github.com/quintans/go-clean-ddd/internal/domain/event"
-	"github.com/quintans/go-clean-ddd/internal/usecase"
+	"github.com/quintans/go-clean-ddd/internal/domain/usecase"
 	"github.com/quintans/go-clean-ddd/lib/event"
 )
 

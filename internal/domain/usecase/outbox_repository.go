@@ -8,7 +8,5 @@ import (
 
 type OutboxRepository interface {
 	Save(ctx context.Context, ob entity.Outbox) error
-	LockAndLoad(ctx context.Context) ([]entity.Outbox, error)
-	Consume(ctx context.Context, outboxes []entity.Outbox) error
-	Release(ctx context.Context, outboxes []entity.Outbox) error
+	Consume(ctx context.Context, handler func([]entity.Outbox) error) error
 }

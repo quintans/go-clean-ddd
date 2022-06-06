@@ -9,14 +9,17 @@ import (
 
 // RegistrationController manages customer
 type RegistrationController struct {
-	createRegistrationHandler command.CreateRegistrationHandler
+	createRegistrationHandler  command.CreateRegistrationHandler
+	confirmRegistrationHandler command.ConfirmRegistrationHandler
 }
 
 func NewRegistrationController(
 	createRegistrationHandler command.CreateRegistrationHandler,
+	confirmRegistrationHandler command.ConfirmRegistrationHandler,
 ) RegistrationController {
 	return RegistrationController{
-		createRegistrationHandler: createRegistrationHandler,
+		createRegistrationHandler:  createRegistrationHandler,
+		confirmRegistrationHandler: confirmRegistrationHandler,
 	}
 }
 
@@ -41,4 +44,19 @@ func (c RegistrationController) AddRegistration(ctx echo.Context) error {
 	}
 
 	return ctx.JSON(http.StatusOK, u)
+}
+
+func (c RegistrationController) ConfirmRegistration(ctx echo.Context) error {
+	id := ctx.Param("id")
+
+	cmd := command.ConfirmRegistrationCommand{
+		Id: id,
+	}
+
+	err := c.confirmRegistrationHandler.Handle(ctx.Request().Context(), cmd)
+	if err != nil {
+		return wrapError(ctx, err)
+	}
+
+	return ctx.NoContent(http.StatusOK)
 }

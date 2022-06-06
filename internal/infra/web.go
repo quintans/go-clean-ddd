@@ -3,19 +3,25 @@ package infra
 import (
 	"context"
 	"log"
-	"sync"
 	"time"
 
 	"github.com/labstack/echo/v4"
 	"github.com/quintans/go-clean-ddd/internal/infra/controller/web"
+	"github.com/quintans/toolkit/latch"
 )
 
-func StartWebServer(ctx context.Context, wg *sync.WaitGroup, c web.CustomerController, r web.RegistrationController) {
-
+func StartWebServer(
+	ctx context.Context,
+	lock *latch.CountDownLatch,
+	address string,
+	c web.CustomerController,
+	r web.RegistrationController,
+) {
 	e := echo.New()
 
+	e.GET("/registrations/:id", r.ConfirmRegistration)
 	e.POST("/registrations", r.AddRegistration)
-	e.GET("/customers", c.ListRegistrations)
+	e.GET("/customers", c.ListCustomers)
 	e.PATCH("/customers/:id", c.UpdateRegistration)
 
 	go func() {
@@ -28,9 +34,9 @@ func StartWebServer(ctx context.Context, wg *sync.WaitGroup, c web.CustomerContr
 	}()
 
 	go func() {
-		wg.Add(1)
-		defer wg.Done()
-		if err := e.Start(":8080"); err != nil {
+		lock.Add(1)
+		defer lock.Done()
+		if err := e.Start(address); err != nil {
 			log.Fatal(err)
 		} else {
 			log.Println("shutting down the web server")

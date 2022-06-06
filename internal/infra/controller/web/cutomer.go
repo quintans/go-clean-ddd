@@ -58,8 +58,8 @@ func (c CustomerController) UpdateRegistration(ctx echo.Context) error {
 	return ctx.NoContent(http.StatusAccepted)
 }
 
-// ListRegistrations lists all customers
-func (c CustomerController) ListRegistrations(ctx echo.Context) error {
+// ListCustomers lists all customers
+func (c CustomerController) ListCustomers(ctx echo.Context) error {
 	customers, err := c.allCustomersHandler.Handle(ctx.Request().Context())
 	if err != nil {
 		return ctx.JSON(http.StatusInternalServerError, err.Error())

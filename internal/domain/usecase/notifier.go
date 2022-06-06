@@ -1,7 +1,16 @@
 package usecase
 
-import "context"
+import (
+	"context"
 
-type Notifier interface {
-	Confirm(ctx context.Context, target string, id string) error
+	"github.com/quintans/go-clean-ddd/internal/domain/vo"
+)
+
+type Publisher interface {
+	Publish(ctx context.Context, event NewRegistration) error
+}
+
+type NewRegistration struct {
+	Id    string
+	Email vo.Email
 }

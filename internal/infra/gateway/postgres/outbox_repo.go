@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"strings"
 	"time"
 
 	"github.com/jmoiron/sqlx"
@@ -40,17 +39,17 @@ func (r OutboxRepository) Save(ctx context.Context, ob entity.Outbox) error {
 	})
 }
 
-func (r OutboxRepository) LockAndLoad(ctx context.Context) ([]entity.Outbox, error) {
-	var entities []entity.Outbox
-	err := r.trans.Current(ctx, func(ctx context.Context, tx *sqlx.Tx) ([]event.DomainEvent, error) {
+func (r OutboxRepository) Consume(ctx context.Context, policy func([]entity.Outbox) error) error {
+	return r.trans.Current(ctx, func(ctx context.Context, tx *sqlx.Tx) ([]event.DomainEvent, error) {
+		var entities []entity.Outbox
 		now := time.Now().UTC()
 		until := now.Add(10 * time.Second)
 		outbox := []Outbox{}
 		err := tx.SelectContext(
 			ctx, &outbox,
-			`UPDATE outbox SET locked_until = $1
-			WHERE consumed=FALSE AND locked_until IS NULL OR locked_until < $2
+			`UPDATE outbox SET consumed=TRUE WHERE consumed=FALSE 
 			ORDER BY id	ASC LIMIT $3
+			FOR UPDATE SKIP LOCKED
 			RETURNING id, kind, payload`,
 			until, now, r.batchSize,
 		)
@@ -60,39 +59,6 @@ func (r OutboxRepository) LockAndLoad(ctx context.Context) ([]entity.Outbox, err
 		for _, o := range outbox {
 			entities = append(entities, entity.RestoreOutbox(o.Id, o.Kind, o.Payload))
 		}
-		return nil, nil
-	})
-
-	return entities, err
-}
-
-func (r OutboxRepository) Consume(ctx context.Context, outboxes []entity.Outbox) error {
-	return r.consume(ctx, outboxes, true)
-}
-
-func (r OutboxRepository) Release(ctx context.Context, outboxes []entity.Outbox) error {
-	return r.consume(ctx, outboxes, false)
-}
-
-func (r OutboxRepository) consume(ctx context.Context, outboxes []entity.Outbox, yes bool) error {
-	return r.trans.Current(ctx, func(ctx context.Context, tx *sqlx.Tx) ([]event.DomainEvent, error) {
-		sb := strings.Builder{}
-		sb.WriteString("UPDATE outbox SET locked_until = NULL")
-		if yes {
-			sb.WriteString(", consumed=TRUE")
-		}
-		sb.WriteString(" WHERE id IN($1)")
-
-		ids := make([]int, len(outboxes))
-		for k, v := range outboxes {
-			ids[k] = v.Id()
-		}
-		upd, args, err := sqlx.In(sb.String(), ids)
-		if err != nil {
-			return nil, err
-		}
-		upd = tx.Rebind(upd)
-		_, err = tx.ExecContext(ctx, upd, args...)
-		return nil, err
+		return nil, policy(entities)
 	})
 }

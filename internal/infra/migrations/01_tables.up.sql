@@ -20,6 +20,5 @@ CREATE TABLE outbox (
 	id BIGSERIAL PRIMARY KEY,
 	kind VARCHAR(50),
 	payload BYTEA,
-	consumed BOOLEAN,
-	locked_until TIMESTAMP
+	consumed BOOLEAN
 );

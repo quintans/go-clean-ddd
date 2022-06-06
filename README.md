@@ -17,7 +17,7 @@ It intends to demonstrate the following:
 The business rules  are the following:
 - When a new customer wants to register, it will provide an email. If the email is unique a new registration aggregate is created.
 - Then the customer will receive an email (not really) with an url that needs to be called to create the customer account
-- After the successfull activation the customer can complete the rest of the information
+- After the successful activation the customer can complete the rest of the information
 
 How:
 - create a registration record if the email is unique
@@ -90,7 +90,7 @@ Here we also apply the simplest form of **CQRS**, a pattern that separates read 
 Here we also find all the interfaces for all the use cases (incoming calls) and gateways (outgoing calls).
 The inputs and outputs declared in the interfaces should never refer to a specific technology. You will not find in the structs definition any tag like ``` `json:"..."` ``` or ``` `\db:"..."``` `
 
-When naming an interface we avoid referring to a specific technology. For example, KafkaPublisher is a bad name, since it refers to specif technology. We should indicate __intent__, for example, if what we want is to notify something, __notifier__ would be a better name for the interface. It is hiding the implementation details. The implementation can push to a kafka topic, write in a DB or send an email. The domain does not care.
+When naming an interface we avoid referring to a specific technology. For example, KafkaPublisher is a bad name, since it refers to specif technology. We should indicate __intent__, for example, if what we want is to publish something, __Publisher__ would be a better name for the interface. It is hiding the implementation details. The implementation can push to a kafka topic, write in a DB or send an email. The domain does not care.
 
 
 #### Command
