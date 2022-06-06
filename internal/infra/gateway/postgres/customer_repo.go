@@ -7,8 +7,8 @@ import (
 
 	"github.com/jmoiron/sqlx"
 	"github.com/quintans/go-clean-ddd/internal/domain/entity"
+	"github.com/quintans/go-clean-ddd/internal/domain/usecase"
 	"github.com/quintans/go-clean-ddd/internal/domain/vo"
-	"github.com/quintans/go-clean-ddd/internal/usecase"
 	"github.com/quintans/go-clean-ddd/lib/event"
 	"github.com/quintans/go-clean-ddd/lib/transaction"
 )

@@ -7,13 +7,11 @@ import (
 
 	"github.com/quintans/go-clean-ddd/internal/domain/entity"
 	"github.com/quintans/go-clean-ddd/internal/domain/event"
-	"github.com/quintans/go-clean-ddd/internal/usecase"
+	"github.com/quintans/go-clean-ddd/internal/domain/usecase"
 )
 
-type FlushOutboxCommand struct{}
-
 type FlushOutboxHandler interface {
-	Handle(context.Context, FlushOutboxCommand) error
+	Handle(context.Context) error
 }
 
 type FlushOutbox struct {
@@ -27,7 +25,7 @@ func NewFlushOutbox(outboxRepository usecase.OutboxRepository) FlushOutbox {
 	}
 }
 
-func (f FlushOutbox) Handle(ctx context.Context, _ FlushOutboxCommand) error {
+func (f FlushOutbox) Handle(ctx context.Context) error {
 	outboxes, err := f.outboxRepository.LockAndLoad(ctx)
 	if errors.Is(err, usecase.ErrModelNotFound) {
 		return nil

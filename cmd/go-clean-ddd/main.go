@@ -3,15 +3,20 @@ package main
 import (
 	"context"
 	"log"
+	"os"
+	"os/signal"
+	"sync"
+	"syscall"
+	"time"
 
 	"github.com/jmoiron/sqlx"
-	"github.com/quintans/go-clean-ddd/internal/controller/web"
-	"github.com/quintans/go-clean-ddd/internal/gateway/postgres"
-	pg "github.com/quintans/go-clean-ddd/internal/infra/postgres"
-	iWeb "github.com/quintans/go-clean-ddd/internal/infra/web"
-	"github.com/quintans/go-clean-ddd/internal/usecase/command"
-	ucEvent "github.com/quintans/go-clean-ddd/internal/usecase/event"
-	"github.com/quintans/go-clean-ddd/internal/usecase/query"
+	"github.com/quintans/go-clean-ddd/internal/domain/usecase/command"
+	ucEvent "github.com/quintans/go-clean-ddd/internal/domain/usecase/event"
+	"github.com/quintans/go-clean-ddd/internal/domain/usecase/query"
+	"github.com/quintans/go-clean-ddd/internal/infra"
+	"github.com/quintans/go-clean-ddd/internal/infra/controller/outbox"
+	"github.com/quintans/go-clean-ddd/internal/infra/controller/web"
+	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres"
 	"github.com/quintans/go-clean-ddd/lib/event"
 	"github.com/quintans/go-clean-ddd/lib/transaction"
 )
@@ -19,10 +24,13 @@ import (
 const dbDriver = "postgres"
 
 func main() {
-	db, err := pg.New()
+	var wg sync.WaitGroup
+
+	db, err := infra.NewDB()
 	if err != nil {
 		log.Fatal(err)
 	}
+	defer db.Close()
 
 	eb := event.NewEventBus()
 	dbx := sqlx.NewDb(db, dbDriver)
@@ -37,7 +45,7 @@ func main() {
 
 	updateCustomer := command.NewUpdateCustomer(customerWrite, customerRead)
 	allCustomers := query.NewAllCustomers(customerRead)
-	c := web.NewCustomerController(
+	customerController := web.NewCustomerController(
 		updateCustomer,
 		allCustomers,
 	)
@@ -48,9 +56,19 @@ func main() {
 	emailVerifiedHandler := ucEvent.NewEmailVerifiedHandler(customerWrite, customerRead)
 	eb.AddHandler(emailVerifiedHandler)
 
-	r := web.NewRegistrationController(createRegistration)
+	outboxRepository := postgres.NewOutboxRepository(trans, 5)
+	outboxUC := command.NewFlushOutbox(outboxRepository)
+	outboxController := outbox.NewOutboxController(outboxUC)
 
-	if err := iWeb.StartWebServer(c, r); err != nil {
-		log.Fatal(err)
-	}
+	ctx, cancel := context.WithCancel(context.Background())
+	infra.StartOutboxRelay(ctx, 5*time.Second, outboxController)
+
+	registrationController := web.NewRegistrationController(createRegistration)
+	infra.StartWebServer(ctx, &wg, customerController, registrationController)
+
+	quit := make(chan os.Signal, 1)
+	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)
+	<-quit
+	cancel()
+	latch.WaitWithTimeout(3 * time.Second)
 }

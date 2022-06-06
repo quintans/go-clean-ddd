@@ -1,4 +1,4 @@
-package postgres
+package infra
 
 import (
 	"database/sql"
@@ -16,9 +16,9 @@ import (
 	_ "github.com/lib/pq"
 )
 
-// New creates a new postgres database connection.
+// NewDB creates a new postgres database connection.
 // It should receive database connection configuration but for the demo purposes we will ignore it
-func New() (*sql.DB, error) {
+func NewDB() (*sql.DB, error) {
 	db, err := sql.Open("postgres", "dbname=postgres user=postgres password=secret port=5432 sslmode=disable")
 	if err != nil {
 		return nil, errors.Wrap(err, "Unable to open connection")
@@ -51,7 +51,7 @@ func migration() error {
 			log.Error(err)
 		}
 	}()
-	m, err := migrate.NewWithDatabaseInstance("file:///migrations", "postgres", d)
+	m, err := migrate.NewWithDatabaseInstance("file://./migrations", "postgres", d)
 	if err != nil {
 		return err
 	}

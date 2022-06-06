@@ -4,8 +4,8 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
-	"github.com/quintans/go-clean-ddd/internal/usecase/command"
-	"github.com/quintans/go-clean-ddd/internal/usecase/query"
+	"github.com/quintans/go-clean-ddd/internal/domain/usecase/command"
+	"github.com/quintans/go-clean-ddd/internal/domain/usecase/query"
 )
 
 type UpdateCommand struct {

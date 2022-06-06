@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/quintans/go-clean-ddd/internal/domain/entity"
+	"github.com/quintans/go-clean-ddd/internal/domain/usecase"
 	"github.com/quintans/go-clean-ddd/internal/domain/vo"
-	"github.com/quintans/go-clean-ddd/internal/usecase"
 )
 
 type CreateRegistrationCommand struct {

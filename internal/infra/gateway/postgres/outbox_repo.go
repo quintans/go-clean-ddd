@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"encoding/json"
 	"strings"
 	"time"
 
@@ -30,16 +29,12 @@ func NewOutboxRepository(trans transaction.Transactioner[*sqlx.Tx], batchSize ui
 	}
 }
 
-func (r OutboxRepository) Save(ctx context.Context, e event.DomainEvent) error {
-	b, err := json.Marshal(e)
-	if err != nil {
-		return err
-	}
+func (r OutboxRepository) Save(ctx context.Context, ob entity.Outbox) error {
 	return r.trans.Current(ctx, func(ctx context.Context, tx *sqlx.Tx) ([]event.DomainEvent, error) {
 		_, err := tx.ExecContext(
 			ctx,
-			"INSERT INTO outbox(payload, consumed) SET VALUES($1, false)",
-			b,
+			"INSERT INTO outbox(kind, payload, consumed) SET VALUES($1, $2, false)",
+			ob.Kind(), ob.Payload(),
 		)
 		return nil, errorMap(err)
 	})
