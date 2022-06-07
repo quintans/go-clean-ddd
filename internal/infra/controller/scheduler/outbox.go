@@ -1,4 +1,4 @@
-package infra
+package scheduler
 
 import (
 	"context"

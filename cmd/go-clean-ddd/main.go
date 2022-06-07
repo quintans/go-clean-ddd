@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"log"
 	"os"
 	"os/signal"
 	"syscall"
@@ -13,6 +12,7 @@ import (
 	ucEvent "github.com/quintans/go-clean-ddd/internal/domain/usecase/event"
 	"github.com/quintans/go-clean-ddd/internal/domain/usecase/query"
 	"github.com/quintans/go-clean-ddd/internal/infra"
+	"github.com/quintans/go-clean-ddd/internal/infra/controller/scheduler"
 	"github.com/quintans/go-clean-ddd/internal/infra/controller/web"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres"
 	"github.com/quintans/go-clean-ddd/lib/event"
@@ -25,10 +25,9 @@ const dbDriver = "postgres"
 func main() {
 	lock := latch.NewCountDownLatch()
 
-	db, err := infra.NewDB()
-	if err != nil {
-		log.Fatal(err)
-	}
+	cfg := infra.LoadEnvVars()
+
+	db := infra.NewDB(cfg.DbConfig)
 	defer db.Close()
 
 	eb := event.NewEventBus()
@@ -60,10 +59,10 @@ func main() {
 	outboxUC := command.NewFlushOutbox(outboxRepository)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	infra.StartOutboxScheduler(ctx, lock, 5*time.Second, outboxUC)
+	scheduler.StartOutboxScheduler(ctx, lock, 5*time.Second, outboxUC)
 
 	registrationController := web.NewRegistrationController(createRegistration, confirmRegistration)
-	infra.StartWebServer(ctx, lock, ":8080", customerController, registrationController)
+	infra.StartWebServer(ctx, lock, cfg.WebConfig, customerController, registrationController)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)

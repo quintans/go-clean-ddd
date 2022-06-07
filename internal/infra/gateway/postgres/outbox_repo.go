@@ -41,11 +41,16 @@ func (r OutboxRepository) Save(ctx context.Context, ob entity.Outbox) error {
 
 func (r OutboxRepository) Consume(ctx context.Context, policy func([]entity.Outbox) error) error {
 	return r.trans.Current(ctx, func(ctx context.Context, tx *sqlx.Tx) ([]event.DomainEvent, error) {
+		ok, err := getAdvisoryLock(ctx, tx)
+		if err != nil || !ok {
+			return nil, err
+		}
+
 		var entities []entity.Outbox
 		now := time.Now().UTC()
 		until := now.Add(10 * time.Second)
 		outbox := []Outbox{}
-		err := tx.SelectContext(
+		err = tx.SelectContext(
 			ctx, &outbox,
 			`UPDATE outbox SET consumed=TRUE WHERE consumed=FALSE 
 			ORDER BY id	ASC LIMIT $3
@@ -61,4 +66,13 @@ func (r OutboxRepository) Consume(ctx context.Context, policy func([]entity.Outb
 		}
 		return nil, policy(entities)
 	})
+}
+
+func getAdvisoryLock(ctx context.Context, tx *sqlx.Tx) (bool, error) {
+	var ok bool
+	err := tx.GetContext(ctx, &ok, "SELECT pg_try_advisory_xact_lock(123)")
+	if err != nil {
+		return false, err
+	}
+	return ok, nil
 }

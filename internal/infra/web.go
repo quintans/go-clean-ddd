@@ -13,7 +13,7 @@ import (
 func StartWebServer(
 	ctx context.Context,
 	lock *latch.CountDownLatch,
-	address string,
+	cfg WebConfig,
 	c web.CustomerController,
 	r web.RegistrationController,
 ) {
@@ -36,7 +36,7 @@ func StartWebServer(
 	go func() {
 		lock.Add(1)
 		defer lock.Done()
-		if err := e.Start(address); err != nil {
+		if err := e.Start(cfg.Port); err != nil {
 			log.Fatal(err)
 		} else {
 			log.Println("shutting down the web server")

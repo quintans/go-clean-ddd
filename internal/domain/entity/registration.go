@@ -5,12 +5,13 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/pkg/errors"
-	"github.com/quintans/go-clean-ddd/internal/domain/event"
+	dEvent "github.com/quintans/go-clean-ddd/internal/domain/event"
 	"github.com/quintans/go-clean-ddd/internal/domain/vo"
+	"github.com/quintans/go-clean-ddd/lib/event"
 )
 
 type Registration struct {
-	Core
+	core Core
 
 	id       string
 	email    vo.Email
@@ -35,7 +36,7 @@ func NewRegistration(ctx context.Context, email vo.Email, policy UniqueEmailPoli
 		email:    email,
 		verified: false,
 	}
-	r.addEvent(event.NewRegistration{Id: id})
+	r.core.addEvent(dEvent.NewRegistration{Id: id})
 	return r, nil
 }
 
@@ -57,7 +58,11 @@ func (r *Registration) Verify() {
 		return
 	}
 	r.verified = true
-	r.addEvent(event.EmailVerified{Email: r.email})
+	r.core.addEvent(dEvent.EmailVerified{Email: r.email})
+}
+
+func (r Registration) PopEvents() []event.DomainEvent {
+	return r.core.PopEvents()
 }
 
 func (r Registration) ID() string {
