@@ -78,10 +78,10 @@ By using an aggregate we can skip the use of Domain Services since we can always
 This is where the aggregates, entities, value objects and domain events live.
 
 ### Use Cases
-This is were the **application** rules are. Here we will have the services needed to satisfy requirements from an external call. Can be from another microservice, from web or mobile.
+This is where the **application** rules are. Here we will have the services needed to satisfy requirements from an external call. Can be from another microservice, from web or mobile.
 Depending on the caller, usually each should have its own method because they would represent distinct use cases.
 
-Most of the time, the implementation just retrieves an aggregate (where the business rules live) from the repository calls a method to apply the business rules and saves the aggregate.
+Most of the time, the implementation just retrieves an aggregate (where the enterprise business rules live) from the repository calls a method to apply the business rules and saves the aggregate.
 There are more complex scenarios where a third party service may need to be called before or after applying the business rules.
 
 Here we also apply the simplest form of **CQRS**, a pattern that separates read and update operations.
