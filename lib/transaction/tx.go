@@ -100,11 +100,7 @@ func (tm *Transaction[T]) makeTxHandler(ctx context.Context, fn TxFunc[T]) error
 	}
 	c := setTxToContext(ctx, tx)
 	defer func() {
-		err := recover()
-		if err != nil {
-			_ = tx.Rollback()
-			panic(err) // up you go
-		}
+		_ = tx.Rollback()
 	}()
 
 	events, err := fn(c, tx)
@@ -118,11 +114,6 @@ func (tm *Transaction[T]) makeTxHandler(ctx context.Context, fn TxFunc[T]) error
 		}
 	}
 
-	if err == nil {
-		_ = tx.Commit()
-	} else {
-		_ = tx.Rollback()
-	}
-
-	return err
+	_ = tx.Commit()
+	return nil
 }
