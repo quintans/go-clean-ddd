@@ -1,32 +1,25 @@
 package infra
 
 import (
-	"database/sql"
 	"fmt"
 	"strings"
 
-	"github.com/labstack/gommon/log"
-	"github.com/pkg/errors"
+	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-
-	// initializes the postgres driver
+	"github.com/labstack/gommon/log"
 	_ "github.com/lib/pq"
+	"github.com/pkg/errors"
 )
 
 // NewDB creates a new postgres database connection.
 // It should receive database connection configuration but for the demo purposes we will ignore it
-func NewDB(cfg DbConfig) *sql.DB {
-	db, err := sql.Open("postgres", fmt.Sprintf("dbname=%s user=%s password=%s port=%d sslmode=disable", cfg.DbName, cfg.DbUser, cfg.DbPassword, cfg.DbPort))
+func NewDB(cfg DbConfig) *ent.Client {
+	client, err := ent.Open("postgres", fmt.Sprintf("dbname=%s user=%s password=%s port=%d sslmode=disable", cfg.DbName, cfg.DbUser, cfg.DbPassword, cfg.DbPort))
 	if err != nil {
 		log.Fatalf("Unable to open connection: %s", err)
-	}
-	// wake up the database pool
-	err = db.Ping()
-	if err != nil {
-		log.Fatalf("Unable to ping database: %s", err)
 	}
 
 	err = migration()
@@ -34,7 +27,7 @@ func NewDB(cfg DbConfig) *sql.DB {
 		log.Fatalf("Unable to migrate database: %s", err)
 	}
 
-	return db
+	return client
 }
 
 func migration() error {

@@ -8,7 +8,10 @@ import (
 	"github.com/quintans/go-clean-ddd/internal/domain/vo"
 )
 
-var ErrModelNotFound = errors.New("model was not found")
+var (
+	ErrNotFound          = errors.New("model was not found")
+	ErrOptimisticLocking = errors.New("optimistic locking failure")
+)
 
 // CustomerRepository interface for handling the persistence of Customer
 type CustomerRepository interface {

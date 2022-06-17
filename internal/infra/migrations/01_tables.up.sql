@@ -1,6 +1,6 @@
 CREATE TABLE customer (
 	id VARCHAR(36) PRIMARY KEY,
-	version INT,
+	version INT NOT NULL,
 	first_name VARCHAR(50),
 	last_name VARCHAR(50),
 	email VARCHAR(255)
@@ -12,13 +12,13 @@ INSERT INTO customer (id, version, first_name, last_name, email) values('b4f990a
 
 CREATE TABLE registration (
 	id VARCHAR(36) PRIMARY KEY,
-	email VARCHAR(255),
+	email VARCHAR(255) NOT NULL,
 	verified BOOLEAN
 );
 
 CREATE TABLE outbox (
 	id BIGSERIAL PRIMARY KEY,
-	kind VARCHAR(50),
+	kind VARCHAR(50) NOT NULL,
 	payload BYTEA,
 	consumed BOOLEAN
 );

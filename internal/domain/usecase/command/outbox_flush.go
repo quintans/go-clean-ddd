@@ -40,7 +40,7 @@ func (f FlushOutbox) Handle(ctx context.Context) error {
 			}
 			return nil
 		})
-		if errors.Is(err, usecase.ErrModelNotFound) {
+		if errors.Is(err, usecase.ErrNotFound) {
 			return nil
 		}
 	}

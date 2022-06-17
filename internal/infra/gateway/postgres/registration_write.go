@@ -3,9 +3,9 @@ package postgres
 import (
 	"context"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/quintans/go-clean-ddd/internal/domain/entity"
 	"github.com/quintans/go-clean-ddd/internal/domain/vo"
+	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent"
 	"github.com/quintans/go-clean-ddd/lib/event"
 	"github.com/quintans/go-clean-ddd/lib/transaction"
 )
@@ -17,17 +17,17 @@ type Registration struct {
 }
 
 type RegistrationRepository struct {
-	trans transaction.Transactioner[*sqlx.Tx]
+	trans transaction.Transactioner[*ent.Tx]
 }
 
-func NewRegistrationRepository(trans transaction.Transactioner[*sqlx.Tx]) RegistrationRepository {
+func NewRegistrationRepository(trans transaction.Transactioner[*ent.Tx]) RegistrationRepository {
 	return RegistrationRepository{
 		trans: trans,
 	}
 }
 
 func (r RegistrationRepository) Save(ctx context.Context, c entity.Registration) error {
-	err := r.trans.Current(ctx, func(ctx context.Context, tx *sqlx.Tx) ([]event.DomainEvent, error) {
+	err := r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) ([]event.DomainEvent, error) {
 		_, err := tx.ExecContext(
 			ctx,
 			"INSERT INTO registration(id, email, verified) SET VALUES($1, $2, $3)",
@@ -40,7 +40,7 @@ func (r RegistrationRepository) Save(ctx context.Context, c entity.Registration)
 }
 
 func (r RegistrationRepository) Apply(ctx context.Context, id string, apply func(context.Context, *entity.Registration) error) error {
-	err := r.trans.Current(ctx, func(ctx context.Context, tx *sqlx.Tx) ([]event.DomainEvent, error) {
+	err := r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) ([]event.DomainEvent, error) {
 		reg, err := r.getByID(ctx, tx, id)
 		if err != nil {
 			return nil, err
@@ -68,7 +68,7 @@ func (r RegistrationRepository) Apply(ctx context.Context, id string, apply func
 	return errorMap(err)
 }
 
-func (r RegistrationRepository) getByID(ctx context.Context, tx *sqlx.Tx, id string) (Registration, error) {
+func (r RegistrationRepository) getByID(ctx context.Context, tx *ent.Tx, id string) (Registration, error) {
 	customer := Registration{}
 	err := tx.Get(&customer, "SELECT * FROM registration WHERE id=$1", id)
 	if err != nil {

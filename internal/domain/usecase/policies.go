@@ -23,7 +23,7 @@ func NewUniquenessPolicy(customerView CustomerViewRepository) UniquenessPolicy {
 
 func (p UniquenessPolicy) IsUnique(ctx context.Context, email vo.Email) (bool, error) {
 	_, err := p.customerView.GetByEmail(ctx, email)
-	if errors.Is(err, ErrModelNotFound) {
+	if errors.Is(err, ErrNotFound) {
 		return false, nil
 	}
 	return err == nil, err

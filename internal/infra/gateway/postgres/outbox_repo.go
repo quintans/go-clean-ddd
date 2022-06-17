@@ -2,11 +2,13 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"time"
 
-	"github.com/jmoiron/sqlx"
+	"github.com/pkg/errors"
 	"github.com/quintans/go-clean-ddd/internal/domain/entity"
 	"github.com/quintans/go-clean-ddd/internal/domain/usecase"
+	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent"
 	"github.com/quintans/go-clean-ddd/lib/event"
 	"github.com/quintans/go-clean-ddd/lib/transaction"
 )
@@ -18,11 +20,11 @@ type Outbox struct {
 }
 
 type OutboxRepository struct {
-	trans     transaction.Transactioner[*sqlx.Tx]
+	trans     transaction.Transactioner[*ent.Tx]
 	batchSize uint
 }
 
-func NewOutboxRepository(trans transaction.Transactioner[*sqlx.Tx], batchSize uint) OutboxRepository {
+func NewOutboxRepository(trans transaction.Transactioner[*ent.Tx], batchSize uint) OutboxRepository {
 	return OutboxRepository{
 		trans:     trans,
 		batchSize: batchSize,
@@ -30,25 +32,25 @@ func NewOutboxRepository(trans transaction.Transactioner[*sqlx.Tx], batchSize ui
 }
 
 func (r OutboxRepository) Save(ctx context.Context, ob entity.Outbox) error {
-	return r.trans.Current(ctx, func(ctx context.Context, tx *sqlx.Tx) ([]event.DomainEvent, error) {
-		_, err := tx.ExecContext(
-			ctx,
-			"INSERT INTO outbox(kind, payload, consumed) SET VALUES($1, $2, false)",
-			ob.Kind(), ob.Payload(),
-		)
+	return r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) ([]event.DomainEvent, error) {
+		_, err := tx.Outbox.
+			Create().
+			SetKind(ob.Kind()).
+			SetPayload(ob.Payload()).
+			Save(ctx)
 		return nil, errorMap(err)
 	})
 }
 
 func (r OutboxRepository) Consume(ctx context.Context, fn func([]entity.Outbox) error) error {
 	for {
-		err := r.trans.Current(ctx, func(ctx context.Context, tx *sqlx.Tx) ([]event.DomainEvent, error) {
+		err := r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) ([]event.DomainEvent, error) {
 			ok, err := getAdvisoryLock(ctx, tx)
 			if err != nil {
 				return nil, err
 			}
 			if !ok {
-				return nil, usecase.ErrModelNotFound
+				return nil, usecase.ErrNotFound
 			}
 
 			var entities []entity.Outbox
@@ -76,11 +78,38 @@ func (r OutboxRepository) Consume(ctx context.Context, fn func([]entity.Outbox) 
 	}
 }
 
-func getAdvisoryLock(ctx context.Context, tx *sqlx.Tx) (bool, error) {
+func getAdvisoryLock(ctx context.Context, tx *ent.Tx) (bool, error) {
+	// 123 is the lock key
+	rows, err := tx.QueryContext(ctx, "SELECT pg_try_advisory_xact_lock(123)")
+	if err != nil {
+		return false, err
+	}
+
 	var ok bool
-	err := tx.GetContext(ctx, &ok, "SELECT pg_try_advisory_xact_lock(123)")
+	err = getOneFromRow(rows, &ok)
 	if err != nil {
 		return false, err
 	}
 	return ok, nil
+}
+
+func getOneFromRow(rows *sql.Rows, v interface{}) error {
+	if rows.Next() {
+		err := rows.Scan(v)
+		if err != nil {
+			return errors.WithStack(err)
+		}
+	}
+	if closeErr := rows.Close(); closeErr != nil {
+		if closeErr != nil {
+			return errors.WithStack(closeErr)
+		}
+	}
+
+	if err := rows.Err(); err != nil {
+		if err != nil {
+			return errors.WithStack(err)
+		}
+	}
+	return nil
 }

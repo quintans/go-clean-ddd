@@ -2,7 +2,6 @@ package transaction
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"fmt"
 
@@ -45,17 +44,7 @@ type Transaction[T Tx] struct {
 	eventBus  event.EventBuser
 }
 
-func Default(db *sql.DB, eventBus event.EventBuser) *Transaction[*sql.Tx] {
-	tm := &Transaction[*sql.Tx]{
-		txFactory: func(ctx context.Context) (Tx, error) {
-			return db.BeginTx(ctx, nil)
-		},
-		eventBus: eventBus,
-	}
-	return tm
-}
-
-func New[T Tx](txFactory func(context.Context) (Tx, error), eventBus event.EventBuser) *Transaction[T] {
+func New[T Tx](eventBus event.EventBuser, txFactory func(context.Context) (Tx, error)) *Transaction[T] {
 	return &Transaction[T]{
 		txFactory: txFactory,
 		eventBus:  eventBus,

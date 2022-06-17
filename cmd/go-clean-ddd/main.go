@@ -7,7 +7,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/jmoiron/sqlx"
 	"github.com/quintans/go-clean-ddd/internal/domain/usecase/command"
 	ucEvent "github.com/quintans/go-clean-ddd/internal/domain/usecase/event"
 	"github.com/quintans/go-clean-ddd/internal/domain/usecase/query"
@@ -15,6 +14,7 @@ import (
 	"github.com/quintans/go-clean-ddd/internal/infra/controller/scheduler"
 	"github.com/quintans/go-clean-ddd/internal/infra/controller/web"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres"
+	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent"
 	"github.com/quintans/go-clean-ddd/lib/event"
 	"github.com/quintans/go-clean-ddd/lib/transaction"
 	"github.com/quintans/toolkit/latch"
@@ -27,19 +27,18 @@ func main() {
 
 	cfg := infra.LoadEnvVars()
 
-	db := infra.NewDB(cfg.DbConfig)
-	defer db.Close()
+	client := infra.NewDB(cfg.DbConfig)
+	defer client.Close()
 
 	eb := event.NewEventBus()
-	dbx := sqlx.NewDb(db, dbDriver)
-	trans := transaction.New[*sqlx.Tx](
-		func(ctx context.Context) (transaction.Tx, error) {
-			return dbx.BeginTxx(ctx, nil)
-		},
+	trans := transaction.New[*ent.Tx](
 		eb,
+		func(ctx context.Context) (transaction.Tx, error) {
+			return client.Tx(ctx)
+		},
 	)
 	customerWrite := postgres.NewCustomerRepository(trans)
-	customerRead := postgres.NewCustomerViewRepository(dbx)
+	customerRead := postgres.NewCustomerViewRepository(client)
 
 	updateCustomer := command.NewUpdateCustomer(customerWrite, customerRead)
 	allCustomers := query.NewAllCustomers(customerRead)
