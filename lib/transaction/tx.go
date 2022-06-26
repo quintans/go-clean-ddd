@@ -19,7 +19,11 @@ type Tx interface {
 	Commit() error
 }
 
-type TxFunc[T Tx] func(context.Context, T) ([]event.DomainEvent, error)
+type EventPopper interface {
+	PopEvents() []event.DomainEvent
+}
+
+type TxFunc[T Tx] func(context.Context, T) (EventPopper, error)
 
 func setTxToContext(ctx context.Context, tx Tx) context.Context {
 	return context.WithValue(ctx, txID, tx)
@@ -62,12 +66,12 @@ func (tm *Transaction[T]) Current(ctx context.Context, fn TxFunc[T]) error {
 		return ErrTxNotFound
 	}
 
-	events, err := fn(ctx, tx)
+	popper, err := fn(ctx, tx)
 	if err != nil {
 		return err
 	}
-	if events != nil && tm.eventBus != nil {
-		return tm.eventBus.Fire(ctx, events...)
+	if popper != nil && tm.eventBus != nil {
+		return tm.eventBus.Fire(ctx, popper.PopEvents()...)
 	}
 	return nil
 }
@@ -92,12 +96,12 @@ func (tm *Transaction[T]) makeTxHandler(ctx context.Context, fn TxFunc[T]) error
 		_ = tx.Rollback()
 	}()
 
-	events, err := fn(c, tx)
+	popper, err := fn(c, tx)
 	if err != nil {
 		return err
 	}
-	if events != nil && tm.eventBus != nil {
-		err := tm.eventBus.Fire(ctx, events...)
+	if popper != nil && tm.eventBus != nil {
+		err := tm.eventBus.Fire(ctx, popper.PopEvents()...)
 		if err != nil {
 			return err
 		}

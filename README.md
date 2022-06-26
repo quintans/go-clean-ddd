@@ -10,24 +10,30 @@ It intends to demonstrate the following:
 - project structure 
 - [outbox pattern](https://microservices.io/patterns/data/transactional-outbox.html) to update database and send events
 - integration event, calling an external gateway: fake message queue
-- domain event for dependency between 2 aggregates (synchronous)
+- domain event for dependency (transaction) between 2 aggregates (synchronous)
 - unit of work across 2 aggregates
 - optimistic locking
+
+> transaction between two or more aggregates is done through the use of events
 
 The business rules  are the following:
 - When a new customer wants to register, it will provide an email. If the email is unique a new registration aggregate is created.
 - Then the customer will receive an email (not really) with an url that needs to be called to create the customer account
 - After the successful activation the customer can complete the rest of the information
 
-How:
+__How__:
 - create a registration record if the email is unique
 - When saving a new registration, a new event is stored in the outbox table, in the same transaction.
-- A background process pools the new event and publishes to a message queue.
-For demonstration purposes the queue is fake and the customer validation will be also embedded in this fake queue.
-- when the email is validated in the registration aggregate, a domain event is fired and handled by the customer aggregate. All we be saved in the same transaction. 
+- A background process polls the new event and publishes to a message queue.
+An event handler will then process this event.
+In a production environment this event handler would be responsible to send am email to the customer with a confirmation link but for demonstration purposes we are going to fake the sending of the email and the customer customer confirmation by directly calling the confirmation endpoint as soon the registration is done
+- an endpoint with the registration ID is called, and after a successful validation in the __registration__ aggregate a domain event is fired, leading to the creation of the customer aggregate and deletion of the registration.
+All will be saved in the same transaction.
+
+> For demonstration purposes the queue is fake
 
 > There are many ways to structure a project that follows the above architecture. Each team should find the one that best suits them as long 
-> it keeps the business logic (domain) separated from the technological details (infrastructure) and it respects the dependency hierarchy between the different layers (controller -> domain <- gateways).
+> it keeps the business logic (domain) separated from the technological details (infrastructure), respects the dependency hierarchy between the different layers (controller -> domain <- gateway) and respects the control flow (controller -> domain -> gateway)
 >
 > An effort is made to keep the packages as shallow as possible
 
@@ -59,7 +65,7 @@ The [controller](./internal/infra/controller/) handles requests from the outside
 This should as thin as possible.
 No logic should be found here, only data transformation.
 
-> ⚠️ It is fine to use value objects at this layer but don't use entities as an input.
+> It is fine to use value objects at this layer but don't use entities as an input.
 
 > eg: convert a json payload into a command and return an ID representing the side effect
 

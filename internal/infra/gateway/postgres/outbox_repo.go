@@ -3,13 +3,11 @@ package postgres
 import (
 	"context"
 	"database/sql"
-	"time"
 
 	"github.com/pkg/errors"
 	"github.com/quintans/go-clean-ddd/internal/domain/entity"
 	"github.com/quintans/go-clean-ddd/internal/domain/usecase"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent"
-	"github.com/quintans/go-clean-ddd/lib/event"
 	"github.com/quintans/go-clean-ddd/lib/transaction"
 )
 
@@ -31,8 +29,8 @@ func NewOutboxRepository(trans transaction.Transactioner[*ent.Tx], batchSize uin
 	}
 }
 
-func (r OutboxRepository) Save(ctx context.Context, ob entity.Outbox) error {
-	return r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) ([]event.DomainEvent, error) {
+func (r OutboxRepository) Create(ctx context.Context, ob entity.Outbox) error {
+	return r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) (transaction.EventPopper, error) {
 		_, err := tx.Outbox.
 			Create().
 			SetKind(ob.Kind()).
@@ -44,32 +42,31 @@ func (r OutboxRepository) Save(ctx context.Context, ob entity.Outbox) error {
 
 func (r OutboxRepository) Consume(ctx context.Context, fn func([]entity.Outbox) error) error {
 	for {
-		err := r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) ([]event.DomainEvent, error) {
+		err := r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) (transaction.EventPopper, error) {
 			ok, err := getAdvisoryLock(ctx, tx)
 			if err != nil {
-				return nil, err
+				return nil, errorMap(err)
 			}
 			if !ok {
 				return nil, usecase.ErrNotFound
 			}
 
-			var entities []entity.Outbox
-			now := time.Now().UTC()
-			until := now.Add(10 * time.Second)
-			outbox := []Outbox{}
-			err = tx.SelectContext(
-				ctx, &outbox,
+			rows, err := tx.QueryContext(
+				ctx,
 				`UPDATE outbox SET consumed=TRUE WHERE consumed=FALSE 
-			ORDER BY id	ASC LIMIT $3
-			RETURNING id, kind, payload`,
-				until, now, r.batchSize,
+				ORDER BY id	ASC LIMIT $1
+				RETURNING id, kind, payload`,
+				r.batchSize,
 			)
 			if err != nil {
 				return nil, errorMap(err)
 			}
-			for _, o := range outbox {
+			var entities []entity.Outbox
+			o := Outbox{}
+			forEachRow(rows, func() {
 				entities = append(entities, entity.RestoreOutbox(o.Id, o.Kind, o.Payload))
-			}
+			}, &o.Id, &o.Kind, &o.Payload)
+
 			return nil, fn(entities)
 		})
 		if err != nil {
@@ -86,23 +83,24 @@ func getAdvisoryLock(ctx context.Context, tx *ent.Tx) (bool, error) {
 	}
 
 	var ok bool
-	err = getOneFromRow(rows, &ok)
+	err = forEachRow(rows, nil, &ok)
 	if err != nil {
 		return false, err
 	}
 	return ok, nil
 }
 
-func getOneFromRow(rows *sql.Rows, v interface{}) error {
-	if rows.Next() {
-		err := rows.Scan(v)
+func forEachRow(rows *sql.Rows, fn func(), v ...interface{}) error {
+	defer rows.Close()
+	for rows.Next() {
+		err := rows.Scan(v...)
 		if err != nil {
 			return errors.WithStack(err)
 		}
-	}
-	if closeErr := rows.Close(); closeErr != nil {
-		if closeErr != nil {
-			return errors.WithStack(closeErr)
+		if fn != nil {
+			fn()
+		} else {
+			break
 		}
 	}
 

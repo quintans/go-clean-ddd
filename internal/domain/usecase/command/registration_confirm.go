@@ -26,7 +26,7 @@ func NewConfirmRegistration(registrationRepository usecase.RegistrationRepositor
 }
 
 func (h ConfirmRegistration) Handle(ctx context.Context, cmd ConfirmRegistrationCommand) error {
-	return h.registrationRepository.Apply(ctx, cmd.Id, func(ctx context.Context, r *entity.Registration) error {
+	return h.registrationRepository.Update(ctx, cmd.Id, func(ctx context.Context, r *entity.Registration) error {
 		r.Verify()
 		return nil
 	})

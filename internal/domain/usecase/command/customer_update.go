@@ -39,7 +39,7 @@ func (r UpdateCustomer) Handle(ctx context.Context, cmd UpdateCustomerCommand) e
 		return err
 	}
 
-	return r.customerRepository.Apply(ctx, id, func(ctx context.Context, c *entity.Customer) error {
+	return r.customerRepository.Update(ctx, id, func(ctx context.Context, c *entity.Customer) error {
 		c.UpdateInfo(fullName)
 		return nil
 	})

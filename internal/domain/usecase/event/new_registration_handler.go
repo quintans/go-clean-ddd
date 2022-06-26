@@ -2,10 +2,9 @@ package event
 
 import (
 	"context"
-	"encoding/json"
+	"fmt"
 
 	"github.com/pkg/errors"
-	"github.com/quintans/go-clean-ddd/internal/domain/entity"
 	devent "github.com/quintans/go-clean-ddd/internal/domain/event"
 	"github.com/quintans/go-clean-ddd/internal/domain/usecase"
 	"github.com/quintans/go-clean-ddd/lib/event"
@@ -32,19 +31,11 @@ func (h NewRegistrationHandler) Handle(ctx context.Context, e event.DomainEvent)
 	case devent.NewRegistration:
 		return h.handleNewRegistration(ctx, t)
 	default:
-		return errors.Errorf("EmailVerifiedHandler cannot handle event of type %T", e)
+		return errors.Errorf("NewRegistrationHandler cannot handle event of type %T", e)
 	}
 }
 
 func (h NewRegistrationHandler) handleNewRegistration(ctx context.Context, e devent.NewRegistration) error {
-	b, err := json.Marshal(e)
-	if err != nil {
-		return err
-	}
-	ob, err := entity.NewOutbox(e.Kind(), b)
-	if err != nil {
-		return err
-	}
-
-	return h.outboxRepository.Save(ctx, ob)
+	fmt.Println("===> fake send email")
+	return nil
 }

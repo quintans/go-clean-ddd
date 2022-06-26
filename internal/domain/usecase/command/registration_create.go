@@ -38,7 +38,7 @@ func (c CreateRegistration) Handle(ctx context.Context, cmd CreateRegistrationCo
 		return "", err
 	}
 
-	err = c.registrationRepository.Save(ctx, r)
+	err = c.registrationRepository.Create(ctx, r)
 	if err != nil {
 		return "", err
 	}

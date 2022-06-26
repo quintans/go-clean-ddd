@@ -41,7 +41,7 @@ func (h EmailVerifiedHandler) handleEmailVerified(ctx context.Context, e devent.
 		return err
 	}
 
-	if err := h.customerRepository.Save(ctx, customer); err != nil {
+	if err := h.customerRepository.Create(ctx, customer); err != nil {
 		return err
 	}
 	return nil

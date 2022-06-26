@@ -9,7 +9,6 @@ import (
 	"github.com/quintans/go-clean-ddd/internal/domain/vo"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent/customer"
-	"github.com/quintans/go-clean-ddd/lib/event"
 	"github.com/quintans/go-clean-ddd/lib/transaction"
 )
 
@@ -31,8 +30,8 @@ func NewCustomerRepository(trans transaction.Transactioner[*ent.Tx]) CustomerRep
 	}
 }
 
-func (r CustomerRepository) Save(ctx context.Context, c entity.Customer) error {
-	err := r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) ([]event.DomainEvent, error) {
+func (r CustomerRepository) Create(ctx context.Context, c entity.Customer) error {
+	err := r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) (transaction.EventPopper, error) {
 		_, err := tx.Customer.
 			Create().
 			SetID(c.ID().String()).
@@ -46,8 +45,8 @@ func (r CustomerRepository) Save(ctx context.Context, c entity.Customer) error {
 	return errorMap(err)
 }
 
-func (r CustomerRepository) Apply(ctx context.Context, id vo.CustomerID, apply func(context.Context, *entity.Customer) error) error {
-	err := r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) ([]event.DomainEvent, error) {
+func (r CustomerRepository) Update(ctx context.Context, id vo.CustomerID, apply func(context.Context, *entity.Customer) error) error {
+	err := r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) (transaction.EventPopper, error) {
 		c, err := r.getByID(ctx, tx, id)
 		if err != nil {
 			return nil, err
@@ -63,6 +62,7 @@ func (r CustomerRepository) Apply(ctx context.Context, id vo.CustomerID, apply f
 			return nil, err
 		}
 
+		// uses optimistic locking
 		n, err := tx.Customer.
 			Update().
 			Where(

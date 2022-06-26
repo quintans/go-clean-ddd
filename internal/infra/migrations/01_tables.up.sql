@@ -16,6 +16,8 @@ CREATE TABLE registration (
 	verified BOOLEAN
 );
 
+CREATE UNIQUE INDEX email_uk ON registration (email);
+
 CREATE TABLE outbox (
 	id BIGSERIAL PRIMARY KEY,
 	kind VARCHAR(50) NOT NULL,
