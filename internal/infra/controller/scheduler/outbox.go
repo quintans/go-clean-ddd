@@ -9,7 +9,7 @@ import (
 	"github.com/quintans/toolkit/latch"
 )
 
-func StartOutboxScheduler(ctx context.Context, lock *latch.CountDownLatch, heartbeat time.Duration, outboxUC command.FlushOutbox) {
+func StartOutboxScheduler(ctx context.Context, lock *latch.CountDownLatch, heartbeat time.Duration, handler command.FlushOutboxHandler) {
 	lock.Add(1)
 	go func() {
 		defer lock.Done()
@@ -20,7 +20,7 @@ func StartOutboxScheduler(ctx context.Context, lock *latch.CountDownLatch, heart
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
-				err := outboxUC.Handle(ctx)
+				err := handler.Handle(ctx)
 				if err != nil {
 					log.Printf("ERROR: failed to execute flush outbox: %s\n", err)
 				}

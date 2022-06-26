@@ -103,7 +103,7 @@ func errorMap(err error) error {
 
 	var target *ent.NotFoundError
 	if errors.As(err, &target) {
-		return app.ErrNotFound
+		return faults.Wrap(app.ErrNotFound)
 	}
 	return faults.Wrap(err)
 }

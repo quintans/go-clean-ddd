@@ -3,18 +3,14 @@ package postgres
 import (
 	"context"
 	"database/sql"
+	"encoding/json"
 
 	"github.com/quintans/faults"
 	"github.com/quintans/go-clean-ddd/internal/app"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent"
+	"github.com/quintans/go-clean-ddd/lib/event"
 	"github.com/quintans/go-clean-ddd/lib/transaction"
 )
-
-type Outbox struct {
-	Id      int
-	Kind    string
-	Payload []byte
-}
 
 type OutboxRepository struct {
 	trans     transaction.Transactioner[*ent.Tx]
@@ -28,12 +24,16 @@ func NewOutboxRepository(trans transaction.Transactioner[*ent.Tx], batchSize uin
 	}
 }
 
-func (r OutboxRepository) Create(ctx context.Context, ob app.Outbox) error {
+func (r OutboxRepository) Handle(ctx context.Context, e event.DomainEvent) error {
+	b, err := json.Marshal(e)
+	if err != nil {
+		return errorMap(err)
+	}
 	return r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) (transaction.EventPopper, error) {
 		_, err := tx.Outbox.
 			Create().
-			SetKind(ob.Kind).
-			SetPayload(ob.Payload).
+			SetKind(e.Kind()).
+			SetPayload(b).
 			Save(ctx)
 		return nil, errorMap(err)
 	})
@@ -54,17 +54,19 @@ func (r OutboxRepository) Consume(ctx context.Context, fn func([]*app.Outbox) er
 				ctx,
 				`UPDATE outbox SET consumed=TRUE WHERE consumed=FALSE 
 				ORDER BY id	ASC LIMIT $1
-				RETURNING id, kind, payload`,
+				RETURNING kind, payload`,
 				r.batchSize,
 			)
 			if err != nil {
 				return nil, errorMap(err)
 			}
 			var entities []*app.Outbox
-			o := Outbox{}
+			var kind string
+			var payload []byte
 			forEachRow(rows, func() {
-				entities = append(entities, app.RestoreOutbox(o.Id, o.Kind, o.Payload))
-			}, &o.Id, &o.Kind, &o.Payload)
+				entities = append(entities, app.RestoreOutbox(kind, payload))
+				payload = nil
+			}, &kind, &payload)
 
 			return nil, fn(entities)
 		})

@@ -9,7 +9,9 @@ import (
 
 	"github.com/quintans/go-clean-ddd/internal/app/command"
 	"github.com/quintans/go-clean-ddd/internal/app/query"
+	"github.com/quintans/go-clean-ddd/internal/domain/registration"
 	"github.com/quintans/go-clean-ddd/internal/infra"
+	"github.com/quintans/go-clean-ddd/internal/infra/controller/fakesub"
 	"github.com/quintans/go-clean-ddd/internal/infra/controller/scheduler"
 	"github.com/quintans/go-clean-ddd/internal/infra/controller/web"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres"
@@ -27,9 +29,9 @@ func main() {
 	client := infra.NewDB(cfg.DbConfig)
 	defer client.Close()
 
-	eb := event.NewEventBus()
+	bus := event.NewEventBus()
 	trans := transaction.New[*ent.Tx](
-		eb,
+		bus,
 		func(ctx context.Context) (transaction.Tx, error) {
 			return client.Tx(ctx)
 		},
@@ -48,17 +50,21 @@ func main() {
 	createRegistration := command.NewCreateRegistration(registrationWrite, customerRead)
 	confirmRegistration := command.NewConfirmRegistration(registrationWrite)
 
-	eb.AddHandler(command.NewRegistrationHandler(cfg.Port))
-	eb.AddHandler(command.NewEmailVerifiedHandler(customerWrite, customerRead))
+	bus.AddHandler(registration.EventEmailVerified, command.NewEmailVerifiedHandler(customerWrite, customerRead))
 
 	outboxRepository := postgres.NewOutboxRepository(trans, 5)
 	outboxUC := command.NewFlushOutbox(outboxRepository)
+	bus.AddHandler(registration.EventRegistrationCreated, outboxRepository)
 
 	ctx, cancel := context.WithCancel(context.Background())
 	scheduler.StartOutboxScheduler(ctx, lock, 5*time.Second, outboxUC)
 
 	registrationController := web.NewRegistrationController(createRegistration, confirmRegistration)
 	infra.StartWebServer(ctx, lock, cfg.WebConfig, customerController, registrationController)
+
+	sendEmail := command.NewSendEmail(cfg.Port)
+	registrationHandler := fakesub.NewRegistrationController(sendEmail)
+	infra.StartMQ(ctx, registrationHandler)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)

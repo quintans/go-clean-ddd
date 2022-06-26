@@ -2,15 +2,15 @@ package registration
 
 import "github.com/quintans/go-clean-ddd/internal/domain"
 
-const EventRegistered = "Registered"
+const EventRegistrationCreated = "RegistrationCreated"
 
-type RegisteredEvent struct {
-	Id    string
+type RegistrationCreatedEvent struct {
+	ID    string
 	Email domain.Email
 }
 
-func (e RegisteredEvent) Kind() string {
-	return EventRegistered
+func (e RegistrationCreatedEvent) Kind() string {
+	return EventRegistrationCreated
 }
 
 const EventEmailVerified = "EmailVerified"

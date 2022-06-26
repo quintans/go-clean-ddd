@@ -10,7 +10,12 @@ import (
 )
 
 type Publisher interface {
-	Publish(ctx context.Context, event NewRegistration) error
+	Publish(ctx context.Context, event Event) error
+}
+
+type Event struct {
+	Kind    string
+	Payload []byte
 }
 
 type NewRegistration struct {
@@ -25,19 +30,16 @@ type RegistrationRepository interface {
 }
 
 type OutboxRepository interface {
-	Create(ctx context.Context, ob Outbox) error
 	Consume(ctx context.Context, handler func([]*Outbox) error) error
 }
 
 type Outbox struct {
-	ID      int
 	Kind    string
 	Payload []byte
 }
 
-func RestoreOutbox(id int, kind string, payload []byte) *Outbox {
+func RestoreOutbox(kind string, payload []byte) *Outbox {
 	return &Outbox{
-		ID:      id,
 		Kind:    kind,
 		Payload: payload,
 	}

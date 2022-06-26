@@ -36,7 +36,7 @@ func NewRegistration(ctx context.Context, email domain.Email, policy domain.Uniq
 		email:    email,
 		verified: false,
 	}
-	r.core.AddEvent(RegisteredEvent{Id: id, Email: email})
+	r.core.AddEvent(RegistrationCreatedEvent{ID: id, Email: email})
 	return r, nil
 }
 

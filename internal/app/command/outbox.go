@@ -2,12 +2,10 @@ package command
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 
 	"github.com/quintans/faults"
 	"github.com/quintans/go-clean-ddd/internal/app"
-	"github.com/quintans/go-clean-ddd/internal/domain/registration"
 )
 
 type FlushOutboxHandler interface {
@@ -25,17 +23,17 @@ func NewFlushOutbox(outboxRepository app.OutboxRepository) FlushOutbox {
 	}
 }
 
+// Handle handles the events in the outbox left to be consumed by publishing them
 func (f FlushOutbox) Handle(ctx context.Context) error {
 	for {
 		err := f.outboxRepository.Consume(ctx, func(events []*app.Outbox) error {
-			for _, o := range events {
-				switch o.Kind {
-				case registration.EventRegistered:
-					if err := f.handleEventNewRegistration(ctx, o); err != nil {
-						return faults.Wrap(err)
-					}
-				default:
-					return faults.Errorf("unknown event in outbox: %s", o.Kind)
+			for _, e := range events {
+				err := f.publisher.Publish(ctx, app.Event{
+					Kind:    e.Kind,
+					Payload: e.Payload,
+				})
+				if err != nil {
+					return faults.Wrap(err)
 				}
 			}
 			return nil
@@ -44,13 +42,4 @@ func (f FlushOutbox) Handle(ctx context.Context) error {
 			return nil
 		}
 	}
-}
-
-func (f FlushOutbox) handleEventNewRegistration(ctx context.Context, o *app.Outbox) error {
-	event := registration.RegisteredEvent{}
-	err := json.Unmarshal(o.Payload, &event)
-	if err != nil {
-		return faults.Wrap(err)
-	}
-	return f.publisher.Publish(ctx, app.NewRegistration{Id: event.Id, Email: event.Email})
 }

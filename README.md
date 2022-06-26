@@ -23,11 +23,11 @@ The business rules  are the following:
 
 __How__:
 - create a registration record if the email is unique
-- When saving a new registration, a new event is stored in the outbox table, in the same transaction.
-- A background process polls the new event and publishes to a message queue.
-An event handler will then process this event.
-In a production environment this event handler would be responsible to send am email to the customer with a confirmation link but for demonstration purposes we are going to fake the sending of the email and the customer customer confirmation by directly calling the confirmation endpoint as soon the registration is done
-- an endpoint with the registration ID is called, and after a successful validation in the __registration__ aggregate a domain event is fired, leading to the creation of the customer aggregate and deletion of the registration.
+- When creating a new registration a domain event is published and stored in the outbox table, in the same transaction.
+- A background process polls the new event and publishes to a message queue (fakemq).
+- A subscriber consumes the previous event from the message queue and sends an email (fake).
+For demonstration purposes we are going to fake sending an email with the confirmation link and the customer confirmation by directly calling the confirmation endpoint as soon the registration is done
+- an endpoint with the registration ID is called, and after a successful validation in the __registration__ aggregate a domain event is produced, leading to the creation of the customer aggregate.
 All will be saved in the same transaction.
 
 > For demonstration purposes the queue is fake
