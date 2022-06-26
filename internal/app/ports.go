@@ -6,7 +6,6 @@ import (
 
 	"github.com/quintans/go-clean-ddd/internal/domain"
 	"github.com/quintans/go-clean-ddd/internal/domain/customer"
-	"github.com/quintans/go-clean-ddd/internal/domain/outbox"
 	"github.com/quintans/go-clean-ddd/internal/domain/registration"
 )
 
@@ -26,8 +25,22 @@ type RegistrationRepository interface {
 }
 
 type OutboxRepository interface {
-	Create(ctx context.Context, ob outbox.Outbox) error
-	Consume(ctx context.Context, handler func([]outbox.Outbox) error) error
+	Create(ctx context.Context, ob Outbox) error
+	Consume(ctx context.Context, handler func([]*Outbox) error) error
+}
+
+type Outbox struct {
+	ID      int
+	Kind    string
+	Payload []byte
+}
+
+func RestoreOutbox(id int, kind string, payload []byte) *Outbox {
+	return &Outbox{
+		ID:      id,
+		Kind:    kind,
+		Payload: payload,
+	}
 }
 
 var (

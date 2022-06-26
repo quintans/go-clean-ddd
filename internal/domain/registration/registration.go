@@ -2,7 +2,6 @@ package registration
 
 import (
 	"context"
-	"errors"
 
 	"github.com/google/uuid"
 	"github.com/quintans/faults"
@@ -43,7 +42,7 @@ func NewRegistration(ctx context.Context, email domain.Email, policy domain.Uniq
 
 func RestoreRegistration(id string, email domain.Email, verified bool) (Registration, error) {
 	if email.IsZero() {
-		return Registration{}, errors.New("registration email is undefined")
+		return Registration{}, faults.New("registration email is undefined")
 	}
 
 	r := Registration{

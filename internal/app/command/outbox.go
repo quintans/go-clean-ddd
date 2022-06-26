@@ -7,7 +7,6 @@ import (
 
 	"github.com/quintans/faults"
 	"github.com/quintans/go-clean-ddd/internal/app"
-	"github.com/quintans/go-clean-ddd/internal/domain/outbox"
 	"github.com/quintans/go-clean-ddd/internal/domain/registration"
 )
 
@@ -28,15 +27,15 @@ func NewFlushOutbox(outboxRepository app.OutboxRepository) FlushOutbox {
 
 func (f FlushOutbox) Handle(ctx context.Context) error {
 	for {
-		err := f.outboxRepository.Consume(ctx, func(events []outbox.Outbox) error {
+		err := f.outboxRepository.Consume(ctx, func(events []*app.Outbox) error {
 			for _, o := range events {
-				switch o.Kind() {
+				switch o.Kind {
 				case registration.EventRegistered:
 					if err := f.handleEventNewRegistration(ctx, o); err != nil {
 						return faults.Wrap(err)
 					}
 				default:
-					return errors.New("unknown event in outbox: " + o.Kind())
+					return faults.Errorf("unknown event in outbox: %s", o.Kind)
 				}
 			}
 			return nil
@@ -47,9 +46,9 @@ func (f FlushOutbox) Handle(ctx context.Context) error {
 	}
 }
 
-func (f FlushOutbox) handleEventNewRegistration(ctx context.Context, o outbox.Outbox) error {
+func (f FlushOutbox) handleEventNewRegistration(ctx context.Context, o *app.Outbox) error {
 	event := registration.RegisteredEvent{}
-	err := json.Unmarshal(o.Payload(), &event)
+	err := json.Unmarshal(o.Payload, &event)
 	if err != nil {
 		return faults.Wrap(err)
 	}

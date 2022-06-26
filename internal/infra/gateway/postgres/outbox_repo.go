@@ -6,7 +6,6 @@ import (
 
 	"github.com/quintans/faults"
 	"github.com/quintans/go-clean-ddd/internal/app"
-	"github.com/quintans/go-clean-ddd/internal/domain/outbox"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent"
 	"github.com/quintans/go-clean-ddd/lib/transaction"
 )
@@ -29,18 +28,18 @@ func NewOutboxRepository(trans transaction.Transactioner[*ent.Tx], batchSize uin
 	}
 }
 
-func (r OutboxRepository) Create(ctx context.Context, ob outbox.Outbox) error {
+func (r OutboxRepository) Create(ctx context.Context, ob app.Outbox) error {
 	return r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) (transaction.EventPopper, error) {
 		_, err := tx.Outbox.
 			Create().
-			SetKind(ob.Kind()).
-			SetPayload(ob.Payload()).
+			SetKind(ob.Kind).
+			SetPayload(ob.Payload).
 			Save(ctx)
 		return nil, errorMap(err)
 	})
 }
 
-func (r OutboxRepository) Consume(ctx context.Context, fn func([]outbox.Outbox) error) error {
+func (r OutboxRepository) Consume(ctx context.Context, fn func([]*app.Outbox) error) error {
 	for {
 		err := r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) (transaction.EventPopper, error) {
 			ok, err := getAdvisoryLock(ctx, tx)
@@ -61,10 +60,10 @@ func (r OutboxRepository) Consume(ctx context.Context, fn func([]outbox.Outbox) 
 			if err != nil {
 				return nil, errorMap(err)
 			}
-			var entities []outbox.Outbox
+			var entities []*app.Outbox
 			o := Outbox{}
 			forEachRow(rows, func() {
-				entities = append(entities, outbox.RestoreOutbox(o.Id, o.Kind, o.Payload))
+				entities = append(entities, app.RestoreOutbox(o.Id, o.Kind, o.Payload))
 			}, &o.Id, &o.Kind, &o.Payload)
 
 			return nil, fn(entities)
