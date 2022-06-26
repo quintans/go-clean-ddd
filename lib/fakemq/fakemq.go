@@ -28,7 +28,7 @@ func New() *FakeMQ {
 	}
 }
 
-func (f *FakeMQ) Publish(_ context.Context, event Event) {
+func (f *FakeMQ) Publish(event Event) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.close {
