@@ -6,7 +6,7 @@ type Core struct {
 	events []event.DomainEvent
 }
 
-func (c *Core) addEvent(e event.DomainEvent) {
+func (c *Core) AddEvent(e event.DomainEvent) {
 	c.events = append(c.events, e)
 }
 

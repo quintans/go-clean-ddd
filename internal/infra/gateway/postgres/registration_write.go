@@ -4,10 +4,10 @@ import (
 	"context"
 
 	"github.com/quintans/faults"
-	"github.com/quintans/go-clean-ddd/internal/domain/entity"
-	"github.com/quintans/go-clean-ddd/internal/domain/vo"
+	"github.com/quintans/go-clean-ddd/internal/domain"
+	"github.com/quintans/go-clean-ddd/internal/domain/registration"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent"
-	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent/registration"
+	entreg "github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent/registration"
 	"github.com/quintans/go-clean-ddd/lib/transaction"
 )
 
@@ -21,7 +21,7 @@ func NewRegistrationRepository(trans transaction.Transactioner[*ent.Tx]) Registr
 	}
 }
 
-func (r RegistrationRepository) Create(ctx context.Context, c entity.Registration) error {
+func (r RegistrationRepository) Create(ctx context.Context, c registration.Registration) error {
 	err := r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) (transaction.EventPopper, error) {
 		_, err := tx.ExecContext(
 			ctx,
@@ -34,7 +34,7 @@ func (r RegistrationRepository) Create(ctx context.Context, c entity.Registratio
 	return errorMap(err)
 }
 
-func (r RegistrationRepository) Update(ctx context.Context, id string, apply func(context.Context, *entity.Registration) error) error {
+func (r RegistrationRepository) Update(ctx context.Context, id string, apply func(context.Context, *registration.Registration) error) error {
 	err := r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) (transaction.EventPopper, error) {
 		reg, err := r.getByID(ctx, tx, id)
 		if err != nil {
@@ -62,17 +62,17 @@ func (r RegistrationRepository) Update(ctx context.Context, id string, apply fun
 }
 
 func (r RegistrationRepository) getByID(ctx context.Context, tx *ent.Tx, id string) (*ent.Registration, error) {
-	e, err := tx.Registration.Query().Where(registration.ID(id)).Only(ctx)
+	e, err := tx.Registration.Query().Where(entreg.ID(id)).Only(ctx)
 	if err != nil {
 		return nil, errorMap(err)
 	}
 	return e, nil
 }
 
-func toDomainRegistration(e *ent.Registration) (entity.Registration, error) {
-	email, err := vo.NewEmail(e.Email)
+func toDomainRegistration(e *ent.Registration) (registration.Registration, error) {
+	email, err := domain.NewEmail(e.Email)
 	if err != nil {
-		return entity.Registration{}, faults.Wrap(err)
+		return registration.Registration{}, faults.Wrap(err)
 	}
-	return entity.RestoreRegistration(e.ID, email, e.Verified)
+	return registration.RestoreRegistration(e.ID, email, e.Verified)
 }

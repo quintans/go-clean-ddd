@@ -5,11 +5,11 @@ import (
 	"errors"
 
 	"github.com/quintans/faults"
-	"github.com/quintans/go-clean-ddd/internal/domain/entity"
-	"github.com/quintans/go-clean-ddd/internal/domain/usecase"
-	"github.com/quintans/go-clean-ddd/internal/domain/vo"
+	"github.com/quintans/go-clean-ddd/internal/app"
+	"github.com/quintans/go-clean-ddd/internal/domain"
+	"github.com/quintans/go-clean-ddd/internal/domain/customer"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent"
-	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent/customer"
+	entcust "github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent/customer"
 	"github.com/quintans/go-clean-ddd/lib/transaction"
 )
 
@@ -31,7 +31,7 @@ func NewCustomerRepository(trans transaction.Transactioner[*ent.Tx]) CustomerRep
 	}
 }
 
-func (r CustomerRepository) Create(ctx context.Context, c entity.Customer) error {
+func (r CustomerRepository) Create(ctx context.Context, c customer.Customer) error {
 	err := r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) (transaction.EventPopper, error) {
 		_, err := tx.Customer.
 			Create().
@@ -46,7 +46,7 @@ func (r CustomerRepository) Create(ctx context.Context, c entity.Customer) error
 	return errorMap(err)
 }
 
-func (r CustomerRepository) Update(ctx context.Context, id vo.CustomerID, apply func(context.Context, *entity.Customer) error) error {
+func (r CustomerRepository) Update(ctx context.Context, id customer.CustomerID, apply func(context.Context, *customer.Customer) error) error {
 	err := r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) (transaction.EventPopper, error) {
 		c, err := r.getByID(ctx, tx, id)
 		if err != nil {
@@ -67,9 +67,9 @@ func (r CustomerRepository) Update(ctx context.Context, id vo.CustomerID, apply 
 		n, err := tx.Customer.
 			Update().
 			Where(
-				customer.And(
-					customer.IDEQ(cust.ID().String()),
-					customer.VersionEQ(c.Version),
+				entcust.And(
+					entcust.IDEQ(cust.ID().String()),
+					entcust.VersionEQ(c.Version),
 				),
 			).
 			SetFirstName(cust.FullName().FirstName()).
@@ -80,7 +80,7 @@ func (r CustomerRepository) Update(ctx context.Context, id vo.CustomerID, apply 
 			return nil, faults.Wrap(err)
 		}
 		if n == 0 {
-			return nil, usecase.ErrOptimisticLocking
+			return nil, app.ErrOptimisticLocking
 		}
 		return nil, nil
 	})
@@ -88,8 +88,8 @@ func (r CustomerRepository) Update(ctx context.Context, id vo.CustomerID, apply 
 	return errorMap(err)
 }
 
-func (r CustomerRepository) getByID(ctx context.Context, tx *ent.Tx, id vo.CustomerID) (*ent.Customer, error) {
-	c, err := tx.Customer.Query().Where(customer.ID(id.String())).Only(ctx)
+func (r CustomerRepository) getByID(ctx context.Context, tx *ent.Tx, id customer.CustomerID) (*ent.Customer, error) {
+	c, err := tx.Customer.Query().Where(entcust.ID(id.String())).Only(ctx)
 	if err != nil {
 		return nil, errorMap(err)
 	}
@@ -103,13 +103,13 @@ func errorMap(err error) error {
 
 	var target *ent.NotFoundError
 	if errors.As(err, &target) {
-		return usecase.ErrNotFound
+		return app.ErrNotFound
 	}
 	return faults.Wrap(err)
 }
 
-func toDomainCustomers(cs []*ent.Customer) ([]entity.Customer, error) {
-	dcs := make([]entity.Customer, len(cs))
+func toDomainCustomers(cs []*ent.Customer) ([]customer.Customer, error) {
+	dcs := make([]customer.Customer, len(cs))
 	for k, v := range cs {
 		dc, err := toDomainCustomer(v)
 		if err != nil {
@@ -120,18 +120,18 @@ func toDomainCustomers(cs []*ent.Customer) ([]entity.Customer, error) {
 	return dcs, nil
 }
 
-func toDomainCustomer(c *ent.Customer) (entity.Customer, error) {
-	id, err := vo.ParseCustomerID(c.ID)
+func toDomainCustomer(c *ent.Customer) (customer.Customer, error) {
+	id, err := customer.ParseCustomerID(c.ID)
 	if err != nil {
-		return entity.Customer{}, faults.Wrap(err)
+		return customer.Customer{}, faults.Wrap(err)
 	}
-	fullName, err := vo.NewFullName(c.FirstName, c.LastName)
+	fullName, err := domain.NewFullName(c.FirstName, c.LastName)
 	if err != nil {
-		return entity.Customer{}, faults.Wrap(err)
+		return customer.Customer{}, faults.Wrap(err)
 	}
-	email, err := vo.NewEmail(c.Email)
+	email, err := domain.NewEmail(c.Email)
 	if err != nil {
-		return entity.Customer{}, faults.Wrap(err)
+		return customer.Customer{}, faults.Wrap(err)
 	}
-	return entity.RestoreCustomer(id, fullName, email), nil
+	return customer.RestoreCustomer(id, fullName, email), nil
 }

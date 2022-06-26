@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/quintans/faults"
-	"github.com/quintans/go-clean-ddd/internal/domain/entity"
-	"github.com/quintans/go-clean-ddd/internal/domain/usecase"
-	"github.com/quintans/go-clean-ddd/internal/domain/vo"
+	"github.com/quintans/go-clean-ddd/internal/app"
+	"github.com/quintans/go-clean-ddd/internal/domain"
+	"github.com/quintans/go-clean-ddd/internal/domain/customer"
 )
 
 type UpdateCustomerCommand struct {
@@ -20,27 +20,27 @@ type UpdateCustomerHandler interface {
 }
 
 type UpdateCustomer struct {
-	customerRepository usecase.CustomerRepository
+	customerRepository app.CustomerRepository
 }
 
-func NewUpdateCustomer(customerRepository usecase.CustomerRepository, customerView usecase.CustomerViewRepository) UpdateCustomer {
+func NewUpdateCustomer(customerRepository app.CustomerRepository, customerView app.CustomerViewRepository) UpdateCustomer {
 	return UpdateCustomer{
 		customerRepository: customerRepository,
 	}
 }
 
 func (r UpdateCustomer) Handle(ctx context.Context, cmd UpdateCustomerCommand) error {
-	id, err := vo.ParseCustomerID(cmd.Id)
+	id, err := customer.ParseCustomerID(cmd.Id)
 	if err != nil {
 		return faults.Wrap(err)
 	}
 
-	fullName, err := vo.NewFullName(cmd.FirstName, cmd.LastName)
+	fullName, err := domain.NewFullName(cmd.FirstName, cmd.LastName)
 	if err != nil {
 		return faults.Wrap(err)
 	}
 
-	return r.customerRepository.Update(ctx, id, func(ctx context.Context, c *entity.Customer) error {
+	return r.customerRepository.Update(ctx, id, func(ctx context.Context, c *customer.Customer) error {
 		c.UpdateInfo(fullName)
 		return nil
 	})

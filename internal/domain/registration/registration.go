@@ -1,4 +1,4 @@
-package entity
+package registration
 
 import (
 	"context"
@@ -6,20 +6,20 @@ import (
 
 	"github.com/google/uuid"
 	"github.com/quintans/faults"
-	dEvent "github.com/quintans/go-clean-ddd/internal/domain/event"
-	"github.com/quintans/go-clean-ddd/internal/domain/vo"
-	"github.com/quintans/go-clean-ddd/lib/event"
+	"github.com/quintans/go-clean-ddd/internal/domain"
+	libent "github.com/quintans/go-clean-ddd/lib/entity"
+	libevt "github.com/quintans/go-clean-ddd/lib/event"
 )
 
 type Registration struct {
-	core Core
+	core libent.Core
 
 	id       string
-	email    vo.Email
+	email    domain.Email
 	verified bool
 }
 
-func NewRegistration(ctx context.Context, email vo.Email, policy UniqueEmailPolicy) (Registration, error) {
+func NewRegistration(ctx context.Context, email domain.Email, policy domain.UniqueEmailPolicy) (Registration, error) {
 	if email.IsZero() {
 		return Registration{}, faults.New("registration email is undefined")
 	}
@@ -37,11 +37,11 @@ func NewRegistration(ctx context.Context, email vo.Email, policy UniqueEmailPoli
 		email:    email,
 		verified: false,
 	}
-	r.core.addEvent(dEvent.NewRegistration{Id: id})
+	r.core.AddEvent(RegisteredEvent{Id: id, Email: email})
 	return r, nil
 }
 
-func RestoreRegistration(id string, email vo.Email, verified bool) (Registration, error) {
+func RestoreRegistration(id string, email domain.Email, verified bool) (Registration, error) {
 	if email.IsZero() {
 		return Registration{}, errors.New("registration email is undefined")
 	}
@@ -59,10 +59,10 @@ func (r *Registration) Verify() {
 		return
 	}
 	r.verified = true
-	r.core.addEvent(dEvent.EmailVerified{Email: r.email})
+	r.core.AddEvent(EmailVerified{Email: r.email})
 }
 
-func (r Registration) PopEvents() []event.DomainEvent {
+func (r Registration) PopEvents() []libevt.DomainEvent {
 	return r.core.PopEvents()
 }
 
@@ -70,7 +70,7 @@ func (r Registration) ID() string {
 	return r.id
 }
 
-func (r Registration) Email() vo.Email {
+func (r Registration) Email() domain.Email {
 	return r.email
 }
 

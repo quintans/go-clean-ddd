@@ -4,8 +4,8 @@ import (
 	"context"
 
 	"github.com/quintans/faults"
-	"github.com/quintans/go-clean-ddd/internal/domain/entity"
-	"github.com/quintans/go-clean-ddd/internal/domain/usecase"
+	"github.com/quintans/go-clean-ddd/internal/app"
+	"github.com/quintans/go-clean-ddd/internal/domain/customer"
 )
 
 type CustomerDTO struct {
@@ -20,10 +20,10 @@ type AllCustomersHandler interface {
 }
 
 type AllCustomers struct {
-	repo usecase.CustomerViewRepository
+	repo app.CustomerViewRepository
 }
 
-func NewAllCustomers(repo usecase.CustomerViewRepository) AllCustomers {
+func NewAllCustomers(repo app.CustomerViewRepository) AllCustomers {
 	return AllCustomers{
 		repo: repo,
 	}
@@ -38,7 +38,7 @@ func (r AllCustomers) Handle(ctx context.Context) ([]CustomerDTO, error) {
 	return toCustomerDTOs(customers), nil
 }
 
-func toCustomerDTOs(in []entity.Customer) []CustomerDTO {
+func toCustomerDTOs(in []customer.Customer) []CustomerDTO {
 	out := make([]CustomerDTO, len(in))
 	for k, v := range in {
 		out[k] = toCustomerDTO(v)
@@ -46,7 +46,7 @@ func toCustomerDTOs(in []entity.Customer) []CustomerDTO {
 	return out
 }
 
-func toCustomerDTO(c entity.Customer) CustomerDTO {
+func toCustomerDTO(c customer.Customer) CustomerDTO {
 	return CustomerDTO{
 		Id:        c.ID().String(),
 		Email:     c.Email().String(),

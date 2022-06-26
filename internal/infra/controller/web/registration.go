@@ -5,7 +5,7 @@ import (
 
 	"github.com/labstack/echo/v4"
 	"github.com/quintans/faults"
-	"github.com/quintans/go-clean-ddd/internal/domain/usecase/command"
+	"github.com/quintans/go-clean-ddd/internal/app/command"
 )
 
 // RegistrationController manages customer

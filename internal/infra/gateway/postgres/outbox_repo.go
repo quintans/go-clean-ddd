@@ -5,8 +5,8 @@ import (
 	"database/sql"
 
 	"github.com/quintans/faults"
-	"github.com/quintans/go-clean-ddd/internal/domain/entity"
-	"github.com/quintans/go-clean-ddd/internal/domain/usecase"
+	"github.com/quintans/go-clean-ddd/internal/app"
+	"github.com/quintans/go-clean-ddd/internal/domain/outbox"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent"
 	"github.com/quintans/go-clean-ddd/lib/transaction"
 )
@@ -29,7 +29,7 @@ func NewOutboxRepository(trans transaction.Transactioner[*ent.Tx], batchSize uin
 	}
 }
 
-func (r OutboxRepository) Create(ctx context.Context, ob entity.Outbox) error {
+func (r OutboxRepository) Create(ctx context.Context, ob outbox.Outbox) error {
 	return r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) (transaction.EventPopper, error) {
 		_, err := tx.Outbox.
 			Create().
@@ -40,7 +40,7 @@ func (r OutboxRepository) Create(ctx context.Context, ob entity.Outbox) error {
 	})
 }
 
-func (r OutboxRepository) Consume(ctx context.Context, fn func([]entity.Outbox) error) error {
+func (r OutboxRepository) Consume(ctx context.Context, fn func([]outbox.Outbox) error) error {
 	for {
 		err := r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) (transaction.EventPopper, error) {
 			ok, err := getAdvisoryLock(ctx, tx)
@@ -48,7 +48,7 @@ func (r OutboxRepository) Consume(ctx context.Context, fn func([]entity.Outbox) 
 				return nil, errorMap(err)
 			}
 			if !ok {
-				return nil, usecase.ErrNotFound
+				return nil, app.ErrNotFound
 			}
 
 			rows, err := tx.QueryContext(
@@ -61,10 +61,10 @@ func (r OutboxRepository) Consume(ctx context.Context, fn func([]entity.Outbox) 
 			if err != nil {
 				return nil, errorMap(err)
 			}
-			var entities []entity.Outbox
+			var entities []outbox.Outbox
 			o := Outbox{}
 			forEachRow(rows, func() {
-				entities = append(entities, entity.RestoreOutbox(o.Id, o.Kind, o.Payload))
+				entities = append(entities, outbox.RestoreOutbox(o.Id, o.Kind, o.Payload))
 			}, &o.Id, &o.Kind, &o.Payload)
 
 			return nil, fn(entities)

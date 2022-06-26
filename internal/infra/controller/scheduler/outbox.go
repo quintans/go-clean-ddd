@@ -5,7 +5,7 @@ import (
 	"log"
 	"time"
 
-	"github.com/quintans/go-clean-ddd/internal/domain/usecase/command"
+	"github.com/quintans/go-clean-ddd/internal/app/command"
 	"github.com/quintans/toolkit/latch"
 )
 

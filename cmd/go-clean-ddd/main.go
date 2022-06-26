@@ -7,8 +7,8 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/quintans/go-clean-ddd/internal/domain/usecase/command"
-	"github.com/quintans/go-clean-ddd/internal/domain/usecase/query"
+	"github.com/quintans/go-clean-ddd/internal/app/command"
+	"github.com/quintans/go-clean-ddd/internal/app/query"
 	"github.com/quintans/go-clean-ddd/internal/infra"
 	"github.com/quintans/go-clean-ddd/internal/infra/controller/scheduler"
 	"github.com/quintans/go-clean-ddd/internal/infra/controller/web"

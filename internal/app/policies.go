@@ -1,15 +1,15 @@
-package usecase
+package app
 
 import (
 	"context"
 	"errors"
 
 	"github.com/quintans/faults"
-	"github.com/quintans/go-clean-ddd/internal/domain/vo"
+	"github.com/quintans/go-clean-ddd/internal/domain"
 )
 
 type UniquenessPolicer interface {
-	IsUnique(ctx context.Context, email vo.Email) (bool, error)
+	IsUnique(ctx context.Context, email domain.Email) (bool, error)
 }
 
 type UniquenessPolicy struct {
@@ -22,7 +22,7 @@ func NewUniquenessPolicy(customerView CustomerViewRepository) UniquenessPolicy {
 	}
 }
 
-func (p UniquenessPolicy) IsUnique(ctx context.Context, email vo.Email) (bool, error) {
+func (p UniquenessPolicy) IsUnique(ctx context.Context, email domain.Email) (bool, error) {
 	_, err := p.customerView.GetByEmail(ctx, email)
 	if errors.Is(err, ErrNotFound) {
 		return false, nil

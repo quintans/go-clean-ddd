@@ -6,12 +6,12 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/quintans/go-clean-ddd/internal/domain/usecase"
+	"github.com/quintans/go-clean-ddd/internal/app"
 )
 
 type FakePublisher struct{}
 
-func (f FakePublisher) Publish(_ context.Context, event usecase.NewRegistration) error {
+func (f FakePublisher) Publish(_ context.Context, event app.NewRegistration) error {
 	url := "http://localhost:0000/confirm/" + event.Id
 	log.Printf("faking sending confirmation link %s to %s\n", url, event.Email)
 	go func() {

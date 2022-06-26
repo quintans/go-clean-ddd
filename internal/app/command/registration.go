@@ -4,9 +4,9 @@ import (
 	"context"
 
 	"github.com/quintans/faults"
-	"github.com/quintans/go-clean-ddd/internal/domain/entity"
-	"github.com/quintans/go-clean-ddd/internal/domain/usecase"
-	"github.com/quintans/go-clean-ddd/internal/domain/vo"
+	"github.com/quintans/go-clean-ddd/internal/app"
+	"github.com/quintans/go-clean-ddd/internal/domain"
+	"github.com/quintans/go-clean-ddd/internal/domain/registration"
 )
 
 type CreateRegistrationCommand struct {
@@ -18,11 +18,11 @@ type CreateRegistrationHandler interface {
 }
 
 type CreateRegistration struct {
-	registrationRepository usecase.RegistrationRepository
-	customerView           usecase.CustomerViewRepository
+	registrationRepository app.RegistrationRepository
+	customerView           app.CustomerViewRepository
 }
 
-func NewCreateRegistration(registrationRepository usecase.RegistrationRepository, customerView usecase.CustomerViewRepository) CreateRegistration {
+func NewCreateRegistration(registrationRepository app.RegistrationRepository, customerView app.CustomerViewRepository) CreateRegistration {
 	return CreateRegistration{
 		registrationRepository: registrationRepository,
 		customerView:           customerView,
@@ -30,11 +30,11 @@ func NewCreateRegistration(registrationRepository usecase.RegistrationRepository
 }
 
 func (c CreateRegistration) Handle(ctx context.Context, cmd CreateRegistrationCommand) (string, error) {
-	email, err := vo.NewEmail(cmd.Email)
+	email, err := domain.NewEmail(cmd.Email)
 	if err != nil {
 		return "", faults.Wrap(err)
 	}
-	r, err := entity.NewRegistration(ctx, email, usecase.NewUniquenessPolicy(c.customerView))
+	r, err := registration.NewRegistration(ctx, email, app.NewUniquenessPolicy(c.customerView))
 	if err != nil {
 		return "", faults.Wrap(err)
 	}
@@ -55,17 +55,17 @@ type ConfirmRegistrationHandler interface {
 }
 
 type ConfirmRegistration struct {
-	registrationRepository usecase.RegistrationRepository
+	registrationRepository app.RegistrationRepository
 }
 
-func NewConfirmRegistration(registrationRepository usecase.RegistrationRepository) ConfirmRegistration {
+func NewConfirmRegistration(registrationRepository app.RegistrationRepository) ConfirmRegistration {
 	return ConfirmRegistration{
 		registrationRepository: registrationRepository,
 	}
 }
 
 func (h ConfirmRegistration) Handle(ctx context.Context, cmd ConfirmRegistrationCommand) error {
-	return h.registrationRepository.Update(ctx, cmd.Id, func(ctx context.Context, r *entity.Registration) error {
+	return h.registrationRepository.Update(ctx, cmd.Id, func(ctx context.Context, r *registration.Registration) error {
 		r.Verify()
 		return nil
 	})

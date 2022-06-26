@@ -8,9 +8,9 @@ import (
 	"time"
 
 	"github.com/quintans/faults"
-	"github.com/quintans/go-clean-ddd/internal/domain/entity"
-	devent "github.com/quintans/go-clean-ddd/internal/domain/event"
-	"github.com/quintans/go-clean-ddd/internal/domain/usecase"
+	"github.com/quintans/go-clean-ddd/internal/app"
+	"github.com/quintans/go-clean-ddd/internal/domain/customer"
+	"github.com/quintans/go-clean-ddd/internal/domain/registration"
 	"github.com/quintans/go-clean-ddd/lib/event"
 )
 
@@ -25,19 +25,19 @@ func NewRegistrationHandler(port string) RegistrationHandler {
 }
 
 func (h RegistrationHandler) Accept(e event.DomainEvent) bool {
-	return e.Kind() == devent.EventNewRegistration
+	return e.Kind() == registration.EventRegistered
 }
 
 func (h RegistrationHandler) Handle(ctx context.Context, e event.DomainEvent) error {
 	switch t := e.(type) {
-	case devent.NewRegistration:
+	case registration.RegisteredEvent:
 		return h.handleNewRegistration(ctx, t)
 	default:
 		return faults.Errorf("RegistrationHandler cannot handle event of type %T", e)
 	}
 }
 
-func (h RegistrationHandler) handleNewRegistration(ctx context.Context, e devent.NewRegistration) error {
+func (h RegistrationHandler) handleNewRegistration(ctx context.Context, e registration.RegisteredEvent) error {
 	fmt.Println("===> faking send email")
 	go func() {
 		time.Sleep(time.Second)
@@ -59,11 +59,11 @@ func (h RegistrationHandler) handleNewRegistration(ctx context.Context, e devent
 }
 
 type EmailVerifiedHandler struct {
-	customerRepository usecase.CustomerRepository
-	customerView       usecase.CustomerViewRepository
+	customerRepository app.CustomerRepository
+	customerView       app.CustomerViewRepository
 }
 
-func NewEmailVerifiedHandler(customerRepository usecase.CustomerRepository, customerView usecase.CustomerViewRepository) EmailVerifiedHandler {
+func NewEmailVerifiedHandler(customerRepository app.CustomerRepository, customerView app.CustomerViewRepository) EmailVerifiedHandler {
 	return EmailVerifiedHandler{
 		customerRepository: customerRepository,
 		customerView:       customerView,
@@ -71,20 +71,20 @@ func NewEmailVerifiedHandler(customerRepository usecase.CustomerRepository, cust
 }
 
 func (h EmailVerifiedHandler) Accept(e event.DomainEvent) bool {
-	return e.Kind() == devent.EventEmailVerified
+	return e.Kind() == registration.EventEmailVerified
 }
 
 func (h EmailVerifiedHandler) Handle(ctx context.Context, e event.DomainEvent) error {
 	switch t := e.(type) {
-	case devent.EmailVerified:
+	case registration.EmailVerified:
 		return h.handleEmailVerified(ctx, t)
 	default:
 		return faults.Errorf("EmailVerifiedHandler cannot handle event of type %T", e)
 	}
 }
 
-func (h EmailVerifiedHandler) handleEmailVerified(ctx context.Context, e devent.EmailVerified) error {
-	customer, err := entity.NewCustomer(ctx, e.Email, usecase.NewUniquenessPolicy(h.customerView))
+func (h EmailVerifiedHandler) handleEmailVerified(ctx context.Context, e registration.EmailVerified) error {
+	customer, err := customer.NewCustomer(ctx, e.Email, app.NewUniquenessPolicy(h.customerView))
 	if err != nil {
 		return faults.Wrap(err)
 	}

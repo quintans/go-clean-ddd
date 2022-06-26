@@ -51,6 +51,9 @@ task up
 
 > need [Task](https://taskfile.dev/installation/) installed
 
+
+The project structure separates technology, application and domain in 3 high level folders respectively named `infra`, `app` and `domain`.
+
 ## Infra
 this is where all the technological details reside.
 
@@ -76,14 +79,17 @@ The [gateway](./internal/infra/gateway/) handles calls to external services. It 
 
 ## Domain
 It contains is business logic and your domain modeling.
-It's independent of specific technologies like databases or web APIs
+It's independent of specific technologies like databases or web APIs.
 
-## Entity
+Domain is split into separate aggregates/entities packages to demonstrate the interaction between to domain.
+Most of the cases one aggregate is enough for the domain and in these cases we can put everything  inside the package domain.
+
+### Modules (Customer, Registration)
 This is where the **enterprise** business rules are. It uses aggregates to enforce all the business rules (invariants).
 By using an aggregate we can skip the use of Domain Services since we can always pass a Policy that wraps any external verification.
-This is where the aggregates, entities, value objects and domain events live.
+This is where the aggregates, entities, value objects and domain events related to the domain module live.
 
-### Use Cases
+## App / Use Cases
 This is where the **application** rules are. Here we will have the services needed to satisfy requirements from an external call. Can be from another microservice, from web or mobile.
 Depending on the caller, usually each should have its own method because they would represent distinct use cases.
 
@@ -92,19 +98,19 @@ There are more complex scenarios where a third party service may need to be call
 
 Here we also apply the simplest form of **CQRS**, a pattern that separates read and update operations.
 
-#### interfaces
-Here we also find all the interfaces for all the use cases (incoming calls) and gateways (outgoing calls).
-The inputs and outputs declared in the interfaces should never refer to a specific technology. You will not find in the structs definition any tag like ``` `json:"..."` ``` or ``` `\db:"..."``` `
+### ports
+Here we also find all the ports (interfaces) for all the controllers (incoming calls) and gateways (outgoing calls).
+The inputs and outputs declared in ports should never refer to a specific technology. You will not find in the structs definition any tag like ``` `json:"..."` ``` or ``` `\db:"..."``` `
 
-When naming an interface we avoid referring to a specific technology. For example, KafkaPublisher is a bad name, since it refers to specif technology. We should indicate __intent__, for example, if what we want is to publish something, __Publisher__ would be a better name for the interface. It is hiding the implementation details. The implementation can push to a kafka topic, write in a DB or send an email. The domain does not care.
+When naming an interface we avoid referring to a specific technology. For example, KafkaPublisher is a bad name, since it refers to specif technology. We should indicate __intent__, for example, if what we want is to publish something, __Publisher__ would be a better name for the interface. It is hiding the implementation details. The implementation can push to a kafka topic, write in a DB or send an email. The domain does not care about the technological details.
 
 
-#### Command
+### Command
 thing to do and it will produce a side effect. Theoretically it shouldn't return anything, since it is not a Query, but lets be pragmatic and return an output when needed.
 
 It is here that we use the repository to get the aggregate, call the use case, and save the aggregate. If there is a need to propagate Domain Event, the outbox pattern could be used (if we don't have another way to propagate database changes). All is done inside the same database transaction. 
 
-#### Query
+### Query
 get information in the form of DTOs
 
 Both [command](./internal/domain/usecase/command/) and [query](./internal/domain/usecase/query/) use cases will have to implement the interface defined in [usecase](./internal/domain/usecase/)
