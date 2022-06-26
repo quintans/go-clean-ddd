@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/quintans/faults"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent"
 
 	"github.com/golang-migrate/migrate/v4"
@@ -11,7 +12,6 @@ import (
 	_ "github.com/golang-migrate/migrate/v4/source/file"
 	"github.com/labstack/gommon/log"
 	_ "github.com/lib/pq"
-	"github.com/pkg/errors"
 )
 
 // NewDB creates a new postgres database connection.
@@ -37,7 +37,7 @@ func migration() error {
 	p := &postgres.Postgres{}
 	d, err := p.Open(addr)
 	if err != nil {
-		return err
+		return faults.Wrap(err)
 	}
 	defer func() {
 		if err := d.Close(); err != nil {
@@ -46,11 +46,11 @@ func migration() error {
 	}()
 	m, err := migrate.NewWithDatabaseInstance("file://./migrations", "postgres", d)
 	if err != nil {
-		return err
+		return faults.Wrap(err)
 	}
 	err = m.Up()
 	if err != nil && err != migrate.ErrNoChange {
-		return errors.Wrap(err, "failed to migrate database")
+		return faults.Wrapf(err, "failed to migrate database")
 	}
 
 	return nil

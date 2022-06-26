@@ -3,6 +3,7 @@ package postgres
 import (
 	"context"
 
+	"github.com/quintans/faults"
 	"github.com/quintans/go-clean-ddd/internal/domain/entity"
 	"github.com/quintans/go-clean-ddd/internal/domain/vo"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent"
@@ -27,7 +28,7 @@ func (r RegistrationRepository) Create(ctx context.Context, c entity.Registratio
 			"INSERT INTO registration(id, email, verified) SET VALUES($1, $2, $3)",
 			c.ID(), c.Email(), c.Verified(),
 		)
-		return c, err
+		return c, faults.Wrap(err)
 	})
 
 	return errorMap(err)
@@ -37,24 +38,24 @@ func (r RegistrationRepository) Update(ctx context.Context, id string, apply fun
 	err := r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) (transaction.EventPopper, error) {
 		reg, err := r.getByID(ctx, tx, id)
 		if err != nil {
-			return nil, err
+			return nil, faults.Wrap(err)
 		}
 
 		registration, err := toDomainRegistration(reg)
 		if err != nil {
-			return nil, err
+			return nil, faults.Wrap(err)
 		}
 
 		err = apply(ctx, &registration)
 		if err != nil {
-			return nil, err
+			return nil, faults.Wrap(err)
 		}
 
 		_, err = tx.Registration.
 			UpdateOne(reg).
 			SetVerified(true).
 			Save(ctx)
-		return registration, err
+		return registration, faults.Wrap(err)
 	})
 
 	return errorMap(err)
@@ -71,7 +72,7 @@ func (r RegistrationRepository) getByID(ctx context.Context, tx *ent.Tx, id stri
 func toDomainRegistration(e *ent.Registration) (entity.Registration, error) {
 	email, err := vo.NewEmail(e.Email)
 	if err != nil {
-		return entity.Registration{}, err
+		return entity.Registration{}, faults.Wrap(err)
 	}
 	return entity.RestoreRegistration(e.ID, email, e.Verified)
 }

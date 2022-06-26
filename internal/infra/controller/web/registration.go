@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"github.com/quintans/faults"
 	"github.com/quintans/go-clean-ddd/internal/domain/usecase/command"
 )
 
@@ -31,7 +32,7 @@ type RegistrationCommand struct {
 func (c RegistrationController) AddRegistration(ctx echo.Context) error {
 	var reg RegistrationCommand
 	if err := ctx.Bind(&reg); err != nil {
-		return err
+		return faults.Wrap(err)
 	}
 
 	cmd := command.CreateRegistrationCommand{

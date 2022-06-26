@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"errors"
 
+	"github.com/quintans/faults"
 	"github.com/quintans/go-clean-ddd/internal/domain/entity"
 	"github.com/quintans/go-clean-ddd/internal/domain/event"
 	"github.com/quintans/go-clean-ddd/internal/domain/usecase"
@@ -32,7 +33,7 @@ func (f FlushOutbox) Handle(ctx context.Context) error {
 				switch o.Kind() {
 				case event.EventNewRegistration:
 					if err := f.handleEventNewRegistration(ctx, o); err != nil {
-						return err
+						return faults.Wrap(err)
 					}
 				default:
 					return errors.New("unknown event in outbox: " + o.Kind())
@@ -50,7 +51,7 @@ func (f FlushOutbox) handleEventNewRegistration(ctx context.Context, o entity.Ou
 	event := event.NewRegistration{}
 	err := json.Unmarshal(o.Payload(), &event)
 	if err != nil {
-		return err
+		return faults.Wrap(err)
 	}
 	return f.publisher.Publish(ctx, usecase.NewRegistration{Id: event.Id, Email: event.Email})
 }

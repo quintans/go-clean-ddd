@@ -2,9 +2,10 @@ package entity
 
 import (
 	"context"
+	"errors"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
+	"github.com/quintans/faults"
 	dEvent "github.com/quintans/go-clean-ddd/internal/domain/event"
 	"github.com/quintans/go-clean-ddd/internal/domain/vo"
 	"github.com/quintans/go-clean-ddd/lib/event"
@@ -20,14 +21,14 @@ type Registration struct {
 
 func NewRegistration(ctx context.Context, email vo.Email, policy UniqueEmailPolicy) (Registration, error) {
 	if email.IsZero() {
-		return Registration{}, errors.New("registration email is undefined")
+		return Registration{}, faults.New("registration email is undefined")
 	}
 	ok, err := policy.IsUnique(ctx, email)
 	if err != nil {
-		return Registration{}, errors.Wrap(err, "failed to check uniqueness of email")
+		return Registration{}, faults.Wrapf(err, "failed to check uniqueness of email")
 	}
 	if !ok {
-		return Registration{}, errors.Errorf("the provided e-mail %s is not unique", email)
+		return Registration{}, faults.Errorf("the provided e-mail %s is not unique", email)
 	}
 
 	id := uuid.New().String()

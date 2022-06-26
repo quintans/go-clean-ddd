@@ -3,6 +3,7 @@ package command
 import (
 	"context"
 
+	"github.com/quintans/faults"
 	"github.com/quintans/go-clean-ddd/internal/domain/entity"
 	"github.com/quintans/go-clean-ddd/internal/domain/usecase"
 	"github.com/quintans/go-clean-ddd/internal/domain/vo"
@@ -31,12 +32,12 @@ func NewUpdateCustomer(customerRepository usecase.CustomerRepository, customerVi
 func (r UpdateCustomer) Handle(ctx context.Context, cmd UpdateCustomerCommand) error {
 	id, err := vo.ParseCustomerID(cmd.Id)
 	if err != nil {
-		return err
+		return faults.Wrap(err)
 	}
 
 	fullName, err := vo.NewFullName(cmd.FirstName, cmd.LastName)
 	if err != nil {
-		return err
+		return faults.Wrap(err)
 	}
 
 	return r.customerRepository.Update(ctx, id, func(ctx context.Context, c *entity.Customer) error {

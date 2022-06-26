@@ -3,7 +3,7 @@ package entity
 import (
 	"context"
 
-	"github.com/pkg/errors"
+	"github.com/quintans/faults"
 	"github.com/quintans/go-clean-ddd/internal/domain/vo"
 )
 
@@ -22,14 +22,14 @@ type UniqueEmailPolicy interface {
 // NewCustomer creates a customer
 func NewCustomer(ctx context.Context, email vo.Email, policy UniqueEmailPolicy) (Customer, error) {
 	if email.IsZero() {
-		return Customer{}, errors.New("email is undefined")
+		return Customer{}, faults.New("email is undefined")
 	}
 	ok, err := policy.IsUnique(ctx, email)
 	if err != nil {
-		return Customer{}, errors.Wrap(err, "failed to check uniqueness of email")
+		return Customer{}, faults.Wrapf(err, "failed to check uniqueness of email")
 	}
 	if !ok {
-		return Customer{}, errors.Errorf("the provided e-mail %s is already taken unique", email)
+		return Customer{}, faults.Errorf("the provided e-mail %s is already taken unique", email)
 	}
 	return Customer{
 		id:    vo.NewCustomerID(),
@@ -37,7 +37,7 @@ func NewCustomer(ctx context.Context, email vo.Email, policy UniqueEmailPolicy) 
 	}, nil
 }
 
-// RestoreCustomer instatiates customer from a previous stored state
+// RestoreCustomer instantiates customer from a previous stored state
 func RestoreCustomer(id vo.CustomerID, fullName vo.FullName, email vo.Email) Customer {
 	return Customer{
 		id:       id,

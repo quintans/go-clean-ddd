@@ -14,7 +14,7 @@ It intends to demonstrate the following:
 - unit of work across 2 aggregates
 - optimistic locking
 
-> transaction between two or more aggregates is done through the use of events
+> transaction between two or more aggregates is done through the use of domain events
 
 The business rules  are the following:
 - When a new customer wants to register, it will provide an email. If the email is unique a new registration aggregate is created.

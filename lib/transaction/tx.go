@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/quintans/faults"
 	"github.com/quintans/go-clean-ddd/lib/event"
 )
 
@@ -68,7 +69,7 @@ func (tm *Transaction[T]) Current(ctx context.Context, fn TxFunc[T]) error {
 
 	popper, err := fn(ctx, tx)
 	if err != nil {
-		return err
+		return faults.Wrap(err)
 	}
 	if popper != nil && tm.eventBus != nil {
 		return tm.eventBus.Fire(ctx, popper.PopEvents()...)
@@ -84,7 +85,7 @@ func (tm *Transaction[T]) makeTxHandler(ctx context.Context, fn TxFunc[T]) error
 	// Begin Transaction
 	t, err := tm.txFactory(ctx)
 	if err != nil {
-		return err
+		return faults.Wrap(err)
 	}
 	tx, ok := t.(T)
 	if !ok {
@@ -98,12 +99,12 @@ func (tm *Transaction[T]) makeTxHandler(ctx context.Context, fn TxFunc[T]) error
 
 	popper, err := fn(c, tx)
 	if err != nil {
-		return err
+		return faults.Wrap(err)
 	}
 	if popper != nil && tm.eventBus != nil {
 		err := tm.eventBus.Fire(ctx, popper.PopEvents()...)
 		if err != nil {
-			return err
+			return faults.Wrap(err)
 		}
 	}
 

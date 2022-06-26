@@ -3,6 +3,7 @@ package query
 import (
 	"context"
 
+	"github.com/quintans/faults"
 	"github.com/quintans/go-clean-ddd/internal/domain/entity"
 	"github.com/quintans/go-clean-ddd/internal/domain/usecase"
 )
@@ -31,7 +32,7 @@ func NewAllCustomers(repo usecase.CustomerViewRepository) AllCustomers {
 func (r AllCustomers) Handle(ctx context.Context) ([]CustomerDTO, error) {
 	customers, err := r.repo.GetAll(ctx)
 	if err != nil {
-		return nil, err
+		return nil, faults.Wrap(err)
 	}
 
 	return toCustomerDTOs(customers), nil

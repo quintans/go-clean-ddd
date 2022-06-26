@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/quintans/faults"
 	"github.com/quintans/go-clean-ddd/internal/domain/vo"
 )
 
@@ -26,5 +27,5 @@ func (p UniquenessPolicy) IsUnique(ctx context.Context, email vo.Email) (bool, e
 	if errors.Is(err, ErrNotFound) {
 		return false, nil
 	}
-	return err == nil, err
+	return err == nil, faults.Wrap(err)
 }

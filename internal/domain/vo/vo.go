@@ -5,25 +5,64 @@ import (
 	"regexp"
 
 	"github.com/google/uuid"
-	"github.com/pkg/errors"
+	"github.com/quintans/faults"
 )
 
-// FullNameVO is a Value Object representing a first and last names
-// gog:record
+// FullName is a Value Object representing a first and last names
 type FullName struct {
-	// gog:@required
 	firstName string
-	// gog:@required
-	lastName string
+	lastName  string
 }
 
 func (f FullName) String() string {
 	return fmt.Sprintf("%s %s", f.firstName, f.lastName)
 }
 
-// gog:record
+func NewFullName(
+	firstName string,
+	lastName string,
+) (FullName, error) {
+	if firstName == "" {
+		return FullName{}, faults.New("FullName.firstName cannot be empty")
+	}
+	if lastName == "" {
+		return FullName{}, faults.New("FullName.lastName cannot be empty")
+	}
+	f := FullName{
+		firstName: firstName,
+		lastName:  lastName,
+	}
+
+	return f, nil
+}
+
+func MustNewFullName(
+	firstName string,
+	lastName string,
+) FullName {
+	f, err := NewFullName(
+		firstName,
+		lastName,
+	)
+	if err != nil {
+		panic(err)
+	}
+	return f
+}
+
+func (f FullName) FirstName() string {
+	return f.firstName
+}
+
+func (f FullName) LastName() string {
+	return f.lastName
+}
+
+func (f FullName) IsZero() bool {
+	return f == FullName{}
+}
+
 type Email struct {
-	// gog:@required
 	email string
 }
 
@@ -35,9 +74,45 @@ var emailRe = regexp.MustCompile("^[a-zA-Z0-9.!#$%&'*+/=?^_`{|}~-]+@[a-zA-Z0-9](
 
 func (e Email) validate() error {
 	if !emailRe.MatchString(e.email) {
-		return errors.Errorf("%s is not a valid email", e.email)
+		return faults.Errorf("%s is not a valid email", e.email)
 	}
 	return nil
+}
+
+func NewEmail(
+	email string,
+) (Email, error) {
+	if email == "" {
+		return Email{}, faults.New("Email.email cannot be empty")
+	}
+	e := Email{
+		email: email,
+	}
+	if err := e.validate(); err != nil {
+		return Email{}, faults.Wrap(err)
+	}
+
+	return e, nil
+}
+
+func MustNewEmail(
+	email string,
+) Email {
+	e, err := NewEmail(
+		email,
+	)
+	if err != nil {
+		panic(err)
+	}
+	return e
+}
+
+func (e Email) Email() string {
+	return e.email
+}
+
+func (e Email) IsZero() bool {
+	return e == Email{}
 }
 
 type CustomerID struct {
@@ -47,7 +122,7 @@ type CustomerID struct {
 func ParseCustomerID(s string) (CustomerID, error) {
 	id, err := uuid.Parse(s)
 	if err != nil {
-		return CustomerID{}, err
+		return CustomerID{}, faults.Wrap(err)
 	}
 	c := CustomerID{
 		id: id,

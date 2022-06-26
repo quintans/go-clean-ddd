@@ -4,6 +4,7 @@ import (
 	"net/http"
 
 	"github.com/labstack/echo/v4"
+	"github.com/quintans/faults"
 	"github.com/quintans/go-clean-ddd/internal/domain/usecase/command"
 	"github.com/quintans/go-clean-ddd/internal/domain/usecase/query"
 )
@@ -41,7 +42,7 @@ func (c CustomerController) UpdateRegistration(ctx echo.Context) error {
 
 	var reg UpdateCommand
 	if err := ctx.Bind(&reg); err != nil {
-		return err
+		return faults.Wrap(err)
 	}
 
 	cmd := command.UpdateCustomerCommand{

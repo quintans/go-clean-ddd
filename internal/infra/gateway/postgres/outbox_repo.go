@@ -4,7 +4,7 @@ import (
 	"context"
 	"database/sql"
 
-	"github.com/pkg/errors"
+	"github.com/quintans/faults"
 	"github.com/quintans/go-clean-ddd/internal/domain/entity"
 	"github.com/quintans/go-clean-ddd/internal/domain/usecase"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent"
@@ -70,7 +70,7 @@ func (r OutboxRepository) Consume(ctx context.Context, fn func([]entity.Outbox) 
 			return nil, fn(entities)
 		})
 		if err != nil {
-			return err
+			return faults.Wrap(err)
 		}
 	}
 }
@@ -79,13 +79,13 @@ func getAdvisoryLock(ctx context.Context, tx *ent.Tx) (bool, error) {
 	// 123 is the lock key
 	rows, err := tx.QueryContext(ctx, "SELECT pg_try_advisory_xact_lock(123)")
 	if err != nil {
-		return false, err
+		return false, faults.Wrap(err)
 	}
 
 	var ok bool
 	err = forEachRow(rows, nil, &ok)
 	if err != nil {
-		return false, err
+		return false, faults.Wrap(err)
 	}
 	return ok, nil
 }
@@ -95,7 +95,7 @@ func forEachRow(rows *sql.Rows, fn func(), v ...interface{}) error {
 	for rows.Next() {
 		err := rows.Scan(v...)
 		if err != nil {
-			return errors.WithStack(err)
+			return faults.Wrap(err)
 		}
 		if fn != nil {
 			fn()
@@ -106,7 +106,7 @@ func forEachRow(rows *sql.Rows, fn func(), v ...interface{}) error {
 
 	if err := rows.Err(); err != nil {
 		if err != nil {
-			return errors.WithStack(err)
+			return faults.Wrap(err)
 		}
 	}
 	return nil

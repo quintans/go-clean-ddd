@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/quintans/go-clean-ddd/internal/domain/usecase/command"
-	ucEvent "github.com/quintans/go-clean-ddd/internal/domain/usecase/event"
 	"github.com/quintans/go-clean-ddd/internal/domain/usecase/query"
 	"github.com/quintans/go-clean-ddd/internal/infra"
 	"github.com/quintans/go-clean-ddd/internal/infra/controller/scheduler"
@@ -19,8 +18,6 @@ import (
 	"github.com/quintans/go-clean-ddd/lib/transaction"
 	"github.com/quintans/toolkit/latch"
 )
-
-const dbDriver = "postgres"
 
 func main() {
 	lock := latch.NewCountDownLatch()
@@ -51,8 +48,8 @@ func main() {
 	createRegistration := command.NewCreateRegistration(registrationWrite, customerRead)
 	confirmRegistration := command.NewConfirmRegistration(registrationWrite)
 
-	emailVerifiedHandler := ucEvent.NewEmailVerifiedHandler(customerWrite, customerRead)
-	eb.AddHandler(emailVerifiedHandler)
+	eb.AddHandler(command.NewRegistrationHandler(cfg.Port))
+	eb.AddHandler(command.NewEmailVerifiedHandler(customerWrite, customerRead))
 
 	outboxRepository := postgres.NewOutboxRepository(trans, 5)
 	outboxUC := command.NewFlushOutbox(outboxRepository)
