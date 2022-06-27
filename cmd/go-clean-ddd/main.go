@@ -7,6 +7,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/quintans/go-clean-ddd/fake"
 	"github.com/quintans/go-clean-ddd/internal/app/command"
 	"github.com/quintans/go-clean-ddd/internal/app/query"
 	"github.com/quintans/go-clean-ddd/internal/domain/registration"
@@ -14,6 +15,7 @@ import (
 	"github.com/quintans/go-clean-ddd/internal/infra/controller/fakesub"
 	"github.com/quintans/go-clean-ddd/internal/infra/controller/scheduler"
 	"github.com/quintans/go-clean-ddd/internal/infra/controller/web"
+	"github.com/quintans/go-clean-ddd/internal/infra/gateway/fakeemail"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent"
 	"github.com/quintans/go-clean-ddd/lib/event"
@@ -62,9 +64,11 @@ func main() {
 	registrationController := web.NewRegistrationController(createRegistration, confirmRegistration)
 	infra.StartWebServer(ctx, lock, cfg.WebConfig, customerController, registrationController)
 
-	sendEmail := command.NewSendEmail(cfg.Port)
+	emailClient := fake.NewEmailClient()
+	emailGateway := fakeemail.NewClient(emailClient)
+	sendEmail := command.NewSendEmail("http://localhost:"+cfg.Port+"/registrations/", emailGateway)
 	registrationHandler := fakesub.NewRegistrationController(sendEmail)
-	infra.StartMQ(ctx, registrationHandler)
+	infra.StartMQ(ctx, lock, registrationHandler)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)

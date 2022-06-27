@@ -13,6 +13,10 @@ type Publisher interface {
 	Publish(ctx context.Context, event Event) error
 }
 
+type EmailSender interface {
+	Send(ctx context.Context, destination domain.Email, body string) error
+}
+
 type Event struct {
 	Kind    string
 	Payload []byte

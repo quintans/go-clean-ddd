@@ -3,20 +3,20 @@ package fakepub
 import (
 	"context"
 
-	"github.com/quintans/go-clean-ddd/lib/fakemq"
+	"github.com/quintans/go-clean-ddd/fake"
 )
 
 type FakePublisher struct {
-	mq *fakemq.FakeMQ
+	mq *fake.FakeMQ
 }
 
-func NewFakePublisher(mq *fakemq.FakeMQ) *FakePublisher {
+func NewFakePublisher(mq *fake.FakeMQ) *FakePublisher {
 	return &FakePublisher{
 		mq: mq,
 	}
 }
 
-func (f *FakePublisher) Publish(_ context.Context, event fakemq.Event) error {
+func (f *FakePublisher) Publish(_ context.Context, event fake.MQEvent) error {
 	f.mq.Publish(event)
 	return nil
 }

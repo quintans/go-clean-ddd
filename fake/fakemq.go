@@ -1,4 +1,4 @@
-package fakemq
+package fake
 
 import (
 	"context"
@@ -6,29 +6,29 @@ import (
 )
 
 type FakeMQ struct {
-	channel     chan Event
+	channel     chan MQEvent
 	subscribers map[string][]Subscriber
 
 	mu    sync.RWMutex
 	close bool
 }
 
-type Event struct {
+type MQEvent struct {
 	Kind    string
 	Payload []byte
 }
 
 type Subscriber interface {
-	Handle(context.Context, Event) error
+	Handle(context.Context, MQEvent) error
 }
 
-func New() *FakeMQ {
+func NewMQ() *FakeMQ {
 	return &FakeMQ{
-		channel: make(chan Event, 10),
+		channel: make(chan MQEvent, 10),
 	}
 }
 
-func (f *FakeMQ) Publish(event Event) {
+func (f *FakeMQ) Publish(event MQEvent) {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	if f.close {
@@ -60,7 +60,7 @@ func (f *FakeMQ) Start() {
 		for e := range f.channel {
 			subs := f.subscribers[e.Kind]
 			for _, s := range subs {
-				s.Handle(context.Background(), e)
+				_ = s.Handle(context.Background(), e)
 			}
 		}
 	}()

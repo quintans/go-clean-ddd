@@ -5,9 +5,9 @@ import (
 	"encoding/json"
 
 	"github.com/quintans/faults"
+	"github.com/quintans/go-clean-ddd/fake"
 	"github.com/quintans/go-clean-ddd/internal/app/command"
 	"github.com/quintans/go-clean-ddd/internal/domain"
-	"github.com/quintans/go-clean-ddd/lib/fakemq"
 )
 
 // RegistrationController handles the MQ about the creation of a new registration
@@ -22,7 +22,7 @@ func NewRegistrationController(sendEmailHandler command.SendEmailHandler) Regist
 	}
 }
 
-func (h RegistrationController) Handle(ctx context.Context, e fakemq.Event) error {
+func (h RegistrationController) Handle(ctx context.Context, e fake.MQEvent) error {
 	var event RegistrationCreatedEvent
 	err := json.Unmarshal(e.Payload, &event)
 	if err != nil {

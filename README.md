@@ -34,8 +34,9 @@ All will be saved in the same transaction.
 
 > There are many ways to structure a project that follows the above architecture. Each team should find the one that best suits them as long 
 > it keeps the business logic (domain) separated from the technological details (infrastructure), respects the dependency hierarchy between the different layers (controller -> domain <- gateway) and respects the control flow (controller -> domain -> gateway)
->
-> An effort is made to keep the packages as shallow as possible
+
+An effort is made to keep the packages as shallow as possible.
+
 
 Start the database container by doing
 
@@ -102,8 +103,7 @@ Here we also apply the simplest form of **CQRS**, a pattern that separates read 
 Here we also find all the ports (interfaces) for all the controllers (incoming calls) and gateways (outgoing calls).
 The inputs and outputs declared in ports should never refer to a specific technology. You will not find in the structs definition any tag like ``` `json:"..."` ``` or ``` `\db:"..."``` `
 
-When naming an interface we avoid referring to a specific technology. For example, KafkaPublisher is a bad name, since it refers to specif technology. We should indicate __intent__, for example, if what we want is to publish something, __Publisher__ would be a better name for the interface. It is hiding the implementation details. The implementation can push to a kafka topic, write in a DB or send an email. The domain does not care about the technological details.
-
+When naming an interface we avoid referring to a specific technology. For example, KafkaPublisher is a bad name, since it refers to specif technology. __Publisher__ would be a better name for the interface.
 
 ### Command
 thing to do and it will produce a side effect. Theoretically it shouldn't return anything, since it is not a Query, but lets be pragmatic and return an output when needed.
