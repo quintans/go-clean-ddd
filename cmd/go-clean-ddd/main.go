@@ -56,11 +56,6 @@ func main() {
 	bus.AddHandler(registration.EventEmailVerified, command.NewEmailVerifiedHandler(customerWrite, customerRead))
 
 	ctx, cancel := context.WithCancel(context.Background())
-	mq := fake.NewMQ()
-	pub := fakepub.NewFakePublisher(mq)
-	outboxMan := outbox.New(trans, 5, pub)
-	outboxMan.Start(ctx, lock, 5*time.Second)
-	bus.AddHandler(registration.EventRegistrationCreated, outboxMan)
 
 	registrationController := web.NewRegistrationController(createRegistration, confirmRegistration)
 	infra.StartWebServer(ctx, lock, cfg.WebConfig, customerController, registrationController)
@@ -69,7 +64,12 @@ func main() {
 	emailGateway := fakeemail.NewClient(emailClient)
 	sendEmail := command.NewSendEmail("http://localhost:"+cfg.Port+"/registrations/", emailGateway)
 	registrationHandler := fakesub.NewRegistrationController(sendEmail)
-	infra.StartMQ(ctx, lock, registrationHandler)
+	mq := infra.StartMQ(ctx, lock, registrationHandler)
+
+	pub := fakepub.NewFakePublisher(mq)
+	outboxMan := outbox.New(trans, 5, pub)
+	outboxMan.Start(ctx, lock, 5*time.Second)
+	bus.AddHandler(registration.EventRegistrationCreated, outboxMan)
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)

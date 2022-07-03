@@ -13,7 +13,7 @@ func StartMQ(
 	ctx context.Context,
 	lock *latch.CountDownLatch,
 	regSub fakesub.RegistrationController,
-) {
+) *fake.FakeMQ {
 	mq := fake.NewMQ()
 
 	mq.Subscribe(registration.EventRegistrationCreated, regSub)
@@ -24,4 +24,6 @@ func StartMQ(
 		<-ctx.Done()
 		mq.Close()
 	}()
+
+	return mq
 }
