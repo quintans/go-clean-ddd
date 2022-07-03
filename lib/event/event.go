@@ -30,6 +30,17 @@ func (m *EventBus) AddHandler(kind string, handler Handler) {
 	m.handlers[kind] = append(handlers, handler)
 }
 
+type HandlerF func(context.Context, DomainEvent) error
+
+func (h HandlerF) Handle(ctx context.Context, event DomainEvent) error {
+	return h(ctx, event)
+}
+
+func (m *EventBus) AddHandlerF(kind string, handler HandlerF) {
+	handlers := m.handlers[kind]
+	m.handlers[kind] = append(handlers, handler)
+}
+
 func (m EventBus) Fire(ctx context.Context, events ...DomainEvent) error {
 	for _, e := range events {
 		handlers := m.handlers[e.Kind()]

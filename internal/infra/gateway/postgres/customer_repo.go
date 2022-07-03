@@ -22,10 +22,10 @@ type Customer struct {
 }
 
 type CustomerRepository struct {
-	trans transaction.Transactioner[*ent.Tx]
+	trans *transaction.Transaction[*ent.Tx]
 }
 
-func NewCustomerRepository(trans transaction.Transactioner[*ent.Tx]) CustomerRepository {
+func NewCustomerRepository(trans *transaction.Transaction[*ent.Tx]) CustomerRepository {
 	return CustomerRepository{
 		trans: trans,
 	}

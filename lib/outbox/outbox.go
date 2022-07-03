@@ -10,7 +10,6 @@ import (
 
 	"github.com/quintans/faults"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent"
-	"github.com/quintans/go-clean-ddd/lib/event"
 	"github.com/quintans/go-clean-ddd/lib/transaction"
 	"github.com/quintans/toolkit/latch"
 )
@@ -18,12 +17,16 @@ import (
 var errLocking = errors.New("failed to get advisory lock")
 
 type Publisher interface {
-	Publish(ctx context.Context, event Event) error
+	Publish(ctx context.Context, event Message) error
 }
 
-type Event struct {
+type Message struct {
 	Kind    string
 	Payload []byte
+}
+
+type Event interface {
+	Kind() string
 }
 
 type outbox struct {
@@ -39,13 +42,13 @@ func restoreOutbox(kind string, payload []byte) *outbox {
 }
 
 type OutboxManager struct {
-	trans     transaction.Transactioner[*ent.Tx]
+	trans     *transaction.Transaction[*ent.Tx]
 	batchSize uint
 	publisher Publisher
 }
 
 func New(
-	trans transaction.Transactioner[*ent.Tx],
+	trans *transaction.Transaction[*ent.Tx],
 	batchSize uint,
 	publisher Publisher,
 ) OutboxManager {
@@ -56,7 +59,7 @@ func New(
 	}
 }
 
-func (r OutboxManager) Handle(ctx context.Context, e event.DomainEvent) error {
+func (r OutboxManager) Create(ctx context.Context, e Event) error {
 	b, err := json.Marshal(e)
 	if err != nil {
 		return faults.Wrap(err)
@@ -65,7 +68,7 @@ func (r OutboxManager) Handle(ctx context.Context, e event.DomainEvent) error {
 		_, err := tx.ExecContext(
 			ctx,
 			"INSERT INTO outbox(kind, payload, consumed) VALUES($1, $2, FALSE)",
-			e.Kind(), b,
+			e.Kind, b,
 		)
 		return nil, faults.Wrap(err)
 	})
@@ -95,7 +98,7 @@ func (f OutboxManager) consumeAll(ctx context.Context) error {
 	for {
 		err := f.consumeBatch(ctx, func(events []*outbox) error {
 			for _, e := range events {
-				err := f.publisher.Publish(ctx, Event{
+				err := f.publisher.Publish(ctx, Message{
 					Kind:    e.Kind,
 					Payload: e.Payload,
 				})

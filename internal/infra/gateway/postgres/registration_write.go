@@ -12,10 +12,10 @@ import (
 )
 
 type RegistrationRepository struct {
-	trans transaction.Transactioner[*ent.Tx]
+	trans *transaction.Transaction[*ent.Tx]
 }
 
-func NewRegistrationRepository(trans transaction.Transactioner[*ent.Tx]) RegistrationRepository {
+func NewRegistrationRepository(trans *transaction.Transaction[*ent.Tx]) RegistrationRepository {
 	return RegistrationRepository{
 		trans: trans,
 	}

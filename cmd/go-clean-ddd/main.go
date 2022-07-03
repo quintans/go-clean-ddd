@@ -69,7 +69,11 @@ func main() {
 	pub := fakepub.NewFakePublisher(mq)
 	outboxMan := outbox.New(trans, 5, pub)
 	outboxMan.Start(ctx, lock, 5*time.Second)
-	bus.AddHandler(registration.EventRegistrationCreated, outboxMan)
+	bus.AddHandlerF(registration.EventRegistrationCreated, func(ctx context.Context, de event.DomainEvent) error {
+		// DEMO: transform the incoming domain event into an integration event if there is a need to.
+		// In this case there is no need
+		return outboxMan.Create(ctx, de)
+	})
 
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM, os.Interrupt)

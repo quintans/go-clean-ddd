@@ -39,11 +39,6 @@ func GetTxFromContext[T Tx](ctx context.Context) (T, error) {
 	return tx, nil
 }
 
-type Transactioner[T Tx] interface {
-	Current(ctx context.Context, fn TxFunc[T]) error
-	New(ctx context.Context, fn TxFunc[T]) error
-}
-
 type Transaction[T Tx] struct {
 	txFactory func(context.Context) (Tx, error)
 	eventBus  event.EventBuser

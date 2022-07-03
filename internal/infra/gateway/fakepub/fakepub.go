@@ -17,7 +17,7 @@ func NewFakePublisher(mq *fake.FakeMQ) *FakePublisher {
 	}
 }
 
-func (f *FakePublisher) Publish(_ context.Context, event outbox.Event) error {
+func (f *FakePublisher) Publish(_ context.Context, event outbox.Message) error {
 	f.mq.Publish(fake.MQEvent{
 		Kind:    event.Kind,
 		Payload: event.Payload,
