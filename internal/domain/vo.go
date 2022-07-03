@@ -106,10 +106,6 @@ func MustNewEmail(
 	return e
 }
 
-func (e Email) Email() string {
-	return e.email
-}
-
 func (e Email) IsZero() bool {
 	return e == Email{}
 }

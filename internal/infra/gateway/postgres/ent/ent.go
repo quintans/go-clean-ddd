@@ -11,7 +11,6 @@ import (
 	"entgo.io/ent/dialect/sql"
 	"entgo.io/ent/dialect/sql/sqlgraph"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent/customer"
-	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent/outbox"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent/registration"
 )
 
@@ -34,7 +33,6 @@ type OrderFunc func(*sql.Selector)
 func columnChecker(table string) func(string) error {
 	checks := map[string]func(string) bool{
 		customer.Table:     customer.ValidColumn,
-		outbox.Table:       outbox.ValidColumn,
 		registration.Table: registration.ValidColumn,
 	}
 	check, ok := checks[table]

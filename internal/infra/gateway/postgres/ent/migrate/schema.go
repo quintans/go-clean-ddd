@@ -22,19 +22,6 @@ var (
 		Columns:    CustomersColumns,
 		PrimaryKey: []*schema.Column{CustomersColumns[0]},
 	}
-	// OutboxesColumns holds the columns for the "outboxes" table.
-	OutboxesColumns = []*schema.Column{
-		{Name: "id", Type: field.TypeInt64, Increment: true},
-		{Name: "kind", Type: field.TypeString, Size: 50},
-		{Name: "payload", Type: field.TypeBytes},
-		{Name: "consumed", Type: field.TypeBool},
-	}
-	// OutboxesTable holds the schema information for the "outboxes" table.
-	OutboxesTable = &schema.Table{
-		Name:       "outboxes",
-		Columns:    OutboxesColumns,
-		PrimaryKey: []*schema.Column{OutboxesColumns[0]},
-	}
 	// RegistrationsColumns holds the columns for the "registrations" table.
 	RegistrationsColumns = []*schema.Column{
 		{Name: "id", Type: field.TypeString},
@@ -50,7 +37,6 @@ var (
 	// Tables holds all the tables in the schema.
 	Tables = []*schema.Table{
 		CustomersTable,
-		OutboxesTable,
 		RegistrationsTable,
 	}
 )

@@ -4,6 +4,7 @@ import (
 	"context"
 
 	"github.com/quintans/go-clean-ddd/fake"
+	"github.com/quintans/go-clean-ddd/lib/outbox"
 )
 
 type FakePublisher struct {
@@ -16,7 +17,10 @@ func NewFakePublisher(mq *fake.FakeMQ) *FakePublisher {
 	}
 }
 
-func (f *FakePublisher) Publish(_ context.Context, event fake.MQEvent) error {
-	f.mq.Publish(event)
+func (f *FakePublisher) Publish(_ context.Context, event outbox.Event) error {
+	f.mq.Publish(fake.MQEvent{
+		Kind:    event.Kind,
+		Payload: event.Payload,
+	})
 	return nil
 }

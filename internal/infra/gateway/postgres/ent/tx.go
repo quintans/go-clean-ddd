@@ -16,8 +16,6 @@ type Tx struct {
 	config
 	// Customer is the client for interacting with the Customer builders.
 	Customer *CustomerClient
-	// Outbox is the client for interacting with the Outbox builders.
-	Outbox *OutboxClient
 	// Registration is the client for interacting with the Registration builders.
 	Registration *RegistrationClient
 
@@ -156,7 +154,6 @@ func (tx *Tx) Client() *Client {
 
 func (tx *Tx) init() {
 	tx.Customer = NewCustomerClient(tx.config)
-	tx.Outbox = NewOutboxClient(tx.config)
 	tx.Registration = NewRegistrationClient(tx.config)
 }
 

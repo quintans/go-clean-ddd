@@ -13,12 +13,13 @@ import (
 	"github.com/quintans/go-clean-ddd/internal/domain/registration"
 	"github.com/quintans/go-clean-ddd/internal/infra"
 	"github.com/quintans/go-clean-ddd/internal/infra/controller/fakesub"
-	"github.com/quintans/go-clean-ddd/internal/infra/controller/scheduler"
 	"github.com/quintans/go-clean-ddd/internal/infra/controller/web"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/fakeemail"
+	"github.com/quintans/go-clean-ddd/internal/infra/gateway/fakepub"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent"
 	"github.com/quintans/go-clean-ddd/lib/event"
+	"github.com/quintans/go-clean-ddd/lib/outbox"
 	"github.com/quintans/go-clean-ddd/lib/transaction"
 	"github.com/quintans/toolkit/latch"
 )
@@ -54,12 +55,12 @@ func main() {
 
 	bus.AddHandler(registration.EventEmailVerified, command.NewEmailVerifiedHandler(customerWrite, customerRead))
 
-	outboxRepository := postgres.NewOutboxRepository(trans, 5)
-	outboxUC := command.NewFlushOutbox(outboxRepository)
-	bus.AddHandler(registration.EventRegistrationCreated, outboxRepository)
-
 	ctx, cancel := context.WithCancel(context.Background())
-	scheduler.StartOutboxScheduler(ctx, lock, 5*time.Second, outboxUC)
+	mq := fake.NewMQ()
+	pub := fakepub.NewFakePublisher(mq)
+	outboxMan := outbox.New(trans, 5, pub)
+	outboxMan.Start(ctx, lock, 5*time.Second)
+	bus.AddHandler(registration.EventRegistrationCreated, outboxMan)
 
 	registrationController := web.NewRegistrationController(createRegistration, confirmRegistration)
 	infra.StartWebServer(ctx, lock, cfg.WebConfig, customerController, registrationController)

@@ -4,7 +4,6 @@ package ent
 
 import (
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent/customer"
-	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent/outbox"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent/schema"
 )
 
@@ -30,10 +29,4 @@ func init() {
 	customerDescID := customerFields[0].Descriptor()
 	// customer.IDValidator is a validator for the "id" field. It is called by the builders before save.
 	customer.IDValidator = customerDescID.Validators[0].(func(string) error)
-	outboxFields := schema.Outbox{}.Fields()
-	_ = outboxFields
-	// outboxDescKind is the schema descriptor for kind field.
-	outboxDescKind := outboxFields[1].Descriptor()
-	// outbox.KindValidator is a validator for the "kind" field. It is called by the builders before save.
-	outbox.KindValidator = outboxDescKind.Validators[0].(func(string) error)
 }

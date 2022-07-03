@@ -22,19 +22,6 @@ func (f CustomerFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, er
 	return f(ctx, mv)
 }
 
-// The OutboxFunc type is an adapter to allow the use of ordinary
-// function as Outbox mutator.
-type OutboxFunc func(context.Context, *ent.OutboxMutation) (ent.Value, error)
-
-// Mutate calls f(ctx, m).
-func (f OutboxFunc) Mutate(ctx context.Context, m ent.Mutation) (ent.Value, error) {
-	mv, ok := m.(*ent.OutboxMutation)
-	if !ok {
-		return nil, fmt.Errorf("unexpected mutation type %T. expect *ent.OutboxMutation", m)
-	}
-	return f(ctx, mv)
-}
-
 // The RegistrationFunc type is an adapter to allow the use of ordinary
 // function as Registration mutator.
 type RegistrationFunc func(context.Context, *ent.RegistrationMutation) (ent.Value, error)

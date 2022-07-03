@@ -9,8 +9,5 @@ import (
 // Customer is the predicate function for customer builders.
 type Customer func(*sql.Selector)
 
-// Outbox is the predicate function for outbox builders.
-type Outbox func(*sql.Selector)
-
 // Registration is the predicate function for registration builders.
 type Registration func(*sql.Selector)

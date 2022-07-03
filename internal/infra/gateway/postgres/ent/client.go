@@ -10,7 +10,6 @@ import (
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent/migrate"
 
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent/customer"
-	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent/outbox"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent/registration"
 
 	"entgo.io/ent/dialect"
@@ -24,8 +23,6 @@ type Client struct {
 	Schema *migrate.Schema
 	// Customer is the client for interacting with the Customer builders.
 	Customer *CustomerClient
-	// Outbox is the client for interacting with the Outbox builders.
-	Outbox *OutboxClient
 	// Registration is the client for interacting with the Registration builders.
 	Registration *RegistrationClient
 }
@@ -42,7 +39,6 @@ func NewClient(opts ...Option) *Client {
 func (c *Client) init() {
 	c.Schema = migrate.NewSchema(c.driver)
 	c.Customer = NewCustomerClient(c.config)
-	c.Outbox = NewOutboxClient(c.config)
 	c.Registration = NewRegistrationClient(c.config)
 }
 
@@ -78,7 +74,6 @@ func (c *Client) Tx(ctx context.Context) (*Tx, error) {
 		ctx:          ctx,
 		config:       cfg,
 		Customer:     NewCustomerClient(cfg),
-		Outbox:       NewOutboxClient(cfg),
 		Registration: NewRegistrationClient(cfg),
 	}, nil
 }
@@ -100,7 +95,6 @@ func (c *Client) BeginTx(ctx context.Context, opts *sql.TxOptions) (*Tx, error) 
 		ctx:          ctx,
 		config:       cfg,
 		Customer:     NewCustomerClient(cfg),
-		Outbox:       NewOutboxClient(cfg),
 		Registration: NewRegistrationClient(cfg),
 	}, nil
 }
@@ -132,7 +126,6 @@ func (c *Client) Close() error {
 // In order to add hooks to a specific client, call: `client.Node.Use(...)`.
 func (c *Client) Use(hooks ...Hook) {
 	c.Customer.Use(hooks...)
-	c.Outbox.Use(hooks...)
 	c.Registration.Use(hooks...)
 }
 
@@ -224,96 +217,6 @@ func (c *CustomerClient) GetX(ctx context.Context, id string) *Customer {
 // Hooks returns the client hooks.
 func (c *CustomerClient) Hooks() []Hook {
 	return c.hooks.Customer
-}
-
-// OutboxClient is a client for the Outbox schema.
-type OutboxClient struct {
-	config
-}
-
-// NewOutboxClient returns a client for the Outbox from the given config.
-func NewOutboxClient(c config) *OutboxClient {
-	return &OutboxClient{config: c}
-}
-
-// Use adds a list of mutation hooks to the hooks stack.
-// A call to `Use(f, g, h)` equals to `outbox.Hooks(f(g(h())))`.
-func (c *OutboxClient) Use(hooks ...Hook) {
-	c.hooks.Outbox = append(c.hooks.Outbox, hooks...)
-}
-
-// Create returns a builder for creating a Outbox entity.
-func (c *OutboxClient) Create() *OutboxCreate {
-	mutation := newOutboxMutation(c.config, OpCreate)
-	return &OutboxCreate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// CreateBulk returns a builder for creating a bulk of Outbox entities.
-func (c *OutboxClient) CreateBulk(builders ...*OutboxCreate) *OutboxCreateBulk {
-	return &OutboxCreateBulk{config: c.config, builders: builders}
-}
-
-// Update returns an update builder for Outbox.
-func (c *OutboxClient) Update() *OutboxUpdate {
-	mutation := newOutboxMutation(c.config, OpUpdate)
-	return &OutboxUpdate{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOne returns an update builder for the given entity.
-func (c *OutboxClient) UpdateOne(o *Outbox) *OutboxUpdateOne {
-	mutation := newOutboxMutation(c.config, OpUpdateOne, withOutbox(o))
-	return &OutboxUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// UpdateOneID returns an update builder for the given id.
-func (c *OutboxClient) UpdateOneID(id int64) *OutboxUpdateOne {
-	mutation := newOutboxMutation(c.config, OpUpdateOne, withOutboxID(id))
-	return &OutboxUpdateOne{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// Delete returns a delete builder for Outbox.
-func (c *OutboxClient) Delete() *OutboxDelete {
-	mutation := newOutboxMutation(c.config, OpDelete)
-	return &OutboxDelete{config: c.config, hooks: c.Hooks(), mutation: mutation}
-}
-
-// DeleteOne returns a builder for deleting the given entity.
-func (c *OutboxClient) DeleteOne(o *Outbox) *OutboxDeleteOne {
-	return c.DeleteOneID(o.ID)
-}
-
-// DeleteOne returns a builder for deleting the given entity by its id.
-func (c *OutboxClient) DeleteOneID(id int64) *OutboxDeleteOne {
-	builder := c.Delete().Where(outbox.ID(id))
-	builder.mutation.id = &id
-	builder.mutation.op = OpDeleteOne
-	return &OutboxDeleteOne{builder}
-}
-
-// Query returns a query builder for Outbox.
-func (c *OutboxClient) Query() *OutboxQuery {
-	return &OutboxQuery{
-		config: c.config,
-	}
-}
-
-// Get returns a Outbox entity by its id.
-func (c *OutboxClient) Get(ctx context.Context, id int64) (*Outbox, error) {
-	return c.Query().Where(outbox.ID(id)).Only(ctx)
-}
-
-// GetX is like Get, but panics if an error occurs.
-func (c *OutboxClient) GetX(ctx context.Context, id int64) *Outbox {
-	obj, err := c.Get(ctx, id)
-	if err != nil {
-		panic(err)
-	}
-	return obj
-}
-
-// Hooks returns the client hooks.
-func (c *OutboxClient) Hooks() []Hook {
-	return c.hooks.Outbox
 }
 
 // RegistrationClient is a client for the Registration schema.

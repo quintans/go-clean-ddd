@@ -38,7 +38,7 @@ func (r CustomerRepository) Create(ctx context.Context, c customer.Customer) err
 			SetID(c.ID().String()).
 			SetFirstName(c.FullName().FirstName()).
 			SetLastName(c.FullName().LastName()).
-			SetEmail(c.Email().Email()).
+			SetEmail(c.Email().String()).
 			Save(ctx)
 		return nil, faults.Wrap(err)
 	})
@@ -74,7 +74,7 @@ func (r CustomerRepository) Update(ctx context.Context, id customer.CustomerID, 
 			).
 			SetFirstName(cust.FullName().FirstName()).
 			SetLastName(cust.FullName().LastName()).
-			SetEmail(cust.Email().Email()).
+			SetEmail(cust.Email().String()).
 			Save(ctx)
 		if err != nil {
 			return nil, faults.Wrap(err)

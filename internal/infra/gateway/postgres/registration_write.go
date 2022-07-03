@@ -23,11 +23,12 @@ func NewRegistrationRepository(trans transaction.Transactioner[*ent.Tx]) Registr
 
 func (r RegistrationRepository) Create(ctx context.Context, c registration.Registration) error {
 	err := r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) (transaction.EventPopper, error) {
-		_, err := tx.ExecContext(
-			ctx,
-			"INSERT INTO registration(id, email, verified) SET VALUES($1, $2, $3)",
-			c.ID(), c.Email(), c.Verified(),
-		)
+		_, err := tx.Registration.Create().
+			SetID(c.ID()).
+			SetEmail(c.Email().String()).
+			SetVerified(c.Verified()).
+			Save(ctx)
+
 		return c, faults.Wrap(err)
 	})
 

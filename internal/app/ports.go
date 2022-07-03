@@ -9,17 +9,8 @@ import (
 	"github.com/quintans/go-clean-ddd/internal/domain/registration"
 )
 
-type Publisher interface {
-	Publish(ctx context.Context, event Event) error
-}
-
 type EmailSender interface {
 	Send(ctx context.Context, destination domain.Email, body string) error
-}
-
-type Event struct {
-	Kind    string
-	Payload []byte
 }
 
 type NewRegistration struct {
@@ -31,22 +22,6 @@ type NewRegistration struct {
 type RegistrationRepository interface {
 	Create(context.Context, registration.Registration) error
 	Update(context.Context, string, func(context.Context, *registration.Registration) error) error
-}
-
-type OutboxRepository interface {
-	Consume(ctx context.Context, handler func([]*Outbox) error) error
-}
-
-type Outbox struct {
-	Kind    string
-	Payload []byte
-}
-
-func RestoreOutbox(kind string, payload []byte) *Outbox {
-	return &Outbox{
-		Kind:    kind,
-		Payload: payload,
-	}
 }
 
 var (
