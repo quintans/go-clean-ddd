@@ -18,8 +18,8 @@ func StartMQ(
 
 	mq.Subscribe(registration.EventRegistrationCreated, regSub)
 
+	lock.Add(1)
 	go func() {
-		lock.Add(1)
 		defer lock.Done()
 		<-ctx.Done()
 		mq.Close()

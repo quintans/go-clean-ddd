@@ -6,7 +6,7 @@ CREATE TABLE customer (
 	email VARCHAR(255)
 );
 
-CREATE UNIQUE INDEX email_uk ON customer (email);
+CREATE UNIQUE INDEX customer_email_uk ON customer (email);
 
 INSERT INTO customer (id, version, first_name, last_name, email) values('b4f990a2-707b-41ae-aa19-9224fb8d2d7e', 1, 'Paulo', 'Pereira', 'paulo.pereira@mail.com');
 
@@ -16,7 +16,7 @@ CREATE TABLE registration (
 	verified BOOLEAN
 );
 
-CREATE UNIQUE INDEX email_uk ON registration (email);
+CREATE UNIQUE INDEX registration_email_uk ON registration (email);
 
 CREATE TABLE outbox (
 	id BIGSERIAL PRIMARY KEY,

@@ -75,7 +75,7 @@ func (r OutboxManager) Create(ctx context.Context, e Event) error {
 }
 
 func (c OutboxManager) Start(ctx context.Context, lock *latch.CountDownLatch, heartbeat time.Duration) {
-	lock.Add(1)
+	// lock.Add(1)
 	go func() {
 		defer lock.Done()
 		ticker := time.NewTicker(heartbeat)

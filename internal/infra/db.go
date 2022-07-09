@@ -17,12 +17,15 @@ import (
 // NewDB creates a new postgres database connection.
 // It should receive database connection configuration but for the demo purposes we will ignore it
 func NewDB(cfg DbConfig) *ent.Client {
-	client, err := ent.Open("postgres", fmt.Sprintf("dbname=%s user=%s password=%s port=%d sslmode=disable", cfg.DbName, cfg.DbUser, cfg.DbPassword, cfg.DbPort))
+	options := []string{"sslmode=disable"}
+	addr := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?%s", cfg.DbUser, cfg.DbPassword, cfg.DbHost, cfg.DbPort, cfg.DbName, strings.Join(options, "&"))
+
+	client, err := ent.Open("postgres", addr)
 	if err != nil {
 		log.Fatalf("Unable to open connection: %s", err)
 	}
 
-	err = migration()
+	err = migration(addr)
 	if err != nil {
 		log.Fatalf("Unable to migrate database: %s", err)
 	}
@@ -30,10 +33,7 @@ func NewDB(cfg DbConfig) *ent.Client {
 	return client
 }
 
-func migration() error {
-	options := []string{"sslmode=disable"}
-	addr := fmt.Sprintf("postgres://postgres:secret@localhost:5432/postgres?%s", strings.Join(options, "&"))
-
+func migration(addr string) error {
 	p := &postgres.Postgres{}
 	d, err := p.Open(addr)
 	if err != nil {

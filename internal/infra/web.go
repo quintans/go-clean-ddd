@@ -33,8 +33,8 @@ func StartWebServer(
 		}
 	}()
 
+	lock.Add(1)
 	go func() {
-		lock.Add(1)
 		defer lock.Done()
 		if err := e.Start(cfg.Port); err != nil {
 			log.Fatal(err)

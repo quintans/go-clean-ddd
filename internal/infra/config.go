@@ -16,8 +16,8 @@ type WebConfig struct {
 }
 
 type DbConfig struct {
-	DbName     string `env:"DB_NAME" envDefault:":postgres"`
-	DbHost     string `env:"DB_HOST" envDefault:":localhost"`
+	DbName     string `env:"DB_NAME" envDefault:"postgres"`
+	DbHost     string `env:"DB_HOST" envDefault:"localhost"`
 	DbPort     int    `env:"DB_PORT" envDefault:"5432"`
 	DbUser     string `env:"DB_USER" envDefault:"postgres"`
 	DbPassword string `env:"DB_PASSWORD" envDefault:"secret"`

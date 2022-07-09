@@ -24,7 +24,8 @@ type Subscriber interface {
 
 func NewMQ() *FakeMQ {
 	return &FakeMQ{
-		channel: make(chan MQEvent, 10),
+		channel:     make(chan MQEvent, 10),
+		subscribers: map[string][]Subscriber{},
 	}
 }
 
