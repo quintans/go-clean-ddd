@@ -127,3 +127,7 @@ http://dddsample.sourceforge.net/characterization.html
 https://blog.cleancoder.com/uncle-bob/2012/08/13/the-clean-architecture.html
 
 There is an interesting article that makes a [Comparison of Domain-Driven Design and Clean Architecture Concepts](https://khalilstemmler.com/articles/software-design-architecture/domain-driven-design-vs-clean-architecture/)
+
+
+## TODO
+- unit tests

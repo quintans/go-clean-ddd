@@ -2,6 +2,7 @@ package infra
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/quintans/faults"
@@ -10,7 +11,6 @@ import (
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
-	"github.com/labstack/gommon/log"
 	_ "github.com/lib/pq"
 )
 
@@ -41,7 +41,7 @@ func migration(addr string) error {
 	}
 	defer func() {
 		if err := d.Close(); err != nil {
-			log.Error(err)
+			log.Printf("[ERROR] %+v", err)
 		}
 	}()
 	m, err := migrate.NewWithDatabaseInstance("file://./migrations", "postgres", d)

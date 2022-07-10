@@ -22,7 +22,7 @@ func NewCustomer(ctx context.Context, email domain.Email, policy domain.UniqueEm
 	}
 	ok, err := policy.IsUnique(ctx, email)
 	if err != nil {
-		return Customer{}, faults.Wrapf(err, "failed to check uniqueness of email")
+		return Customer{}, faults.Wrapf(err, "failed to check uniqueness of email on new customer")
 	}
 	if !ok {
 		return Customer{}, faults.Errorf("the provided e-mail %s is already taken unique", email)

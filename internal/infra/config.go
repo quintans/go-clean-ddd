@@ -2,6 +2,7 @@ package infra
 
 import (
 	"log"
+	"time"
 
 	"github.com/caarlos0/env/v6"
 )
@@ -9,6 +10,7 @@ import (
 type Config struct {
 	WebConfig
 	DbConfig
+	OutboxHeartbeat time.Duration `env:"OUTBOX_HEARTBEAT" envDefault:"5s"`
 }
 
 type WebConfig struct {
@@ -27,7 +29,7 @@ func LoadEnvVars() Config {
 	cfg := Config{}
 	if err := env.Parse(&cfg); err != nil {
 		if err != nil {
-			log.Fatal(err)
+			log.Fatalf("[ERROR] %+v", err)
 		}
 	}
 	return cfg

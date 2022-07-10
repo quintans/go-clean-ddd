@@ -24,8 +24,11 @@ func NewUniquenessPolicy(customerView CustomerViewRepository) UniquenessPolicy {
 
 func (p UniquenessPolicy) IsUnique(ctx context.Context, email domain.Email) (bool, error) {
 	_, err := p.customerView.GetByEmail(ctx, email)
-	if errors.Is(err, ErrNotFound) {
-		return false, nil
+	if err != nil {
+		if errors.Is(err, ErrNotFound) {
+			return true, nil
+		}
+		return false, faults.Wrap(err)
 	}
-	return err == nil, faults.Wrap(err)
+	return false, nil
 }

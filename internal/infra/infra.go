@@ -2,7 +2,6 @@ package infra
 
 import (
 	"context"
-	"time"
 
 	"github.com/quintans/go-clean-ddd/fake"
 	"github.com/quintans/go-clean-ddd/internal/app/command"
@@ -23,7 +22,12 @@ import (
 
 func Start(ctx context.Context, lock *latch.CountDownLatch, cfg Config) {
 	db := NewDB(cfg.DbConfig)
-	defer db.Close()
+	lock.Add(1)
+	go func() {
+		<-ctx.Done()
+		db.Close()
+		lock.Done()
+	}()
 
 	bus := eventbus.New()
 	trans := transaction.New[*ent.Tx](
@@ -59,10 +63,10 @@ func Start(ctx context.Context, lock *latch.CountDownLatch, cfg Config) {
 
 	pub := fakepub.NewFakePublisher(mq)
 	outboxMan := outbox.New(trans, 5, pub)
-	outboxMan.Start(ctx, lock, 5*time.Second)
 	bus.Subscribe(registration.EventRegistrationCreated, func(ctx context.Context, de eventbus.DomainEvent) error {
 		// DEMO: transform the incoming domain event into an integration event if there is a need to.
 		// In this case there is no need to.
 		return outboxMan.Create(ctx, de)
 	})
+	outboxMan.Start(ctx, lock, cfg.OutboxHeartbeat)
 }

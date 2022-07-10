@@ -5,6 +5,6 @@ package runtime
 // The schema-stitching logic is generated in github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent/runtime.go
 
 const (
-	Version = "v0.10.2-0.20220615141015-7017cbc898e8"           // Version of ent codegen.
-	Sum     = "h1:WiIPOXsYK+dySBSlDrPxNXwJNlYKHHI/xTY7UeCWtHw=" // Sum of ent codegen.
+	Version = "v0.10.2-0.20220708182646-0f33b0bcb8ec"           // Version of ent codegen.
+	Sum     = "h1:FiCLJr9U5X6P1zKUzGsVYjXn9faNoosQKUrBFNM+coQ=" // Sum of ent codegen.
 )

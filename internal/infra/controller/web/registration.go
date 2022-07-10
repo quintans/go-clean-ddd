@@ -44,7 +44,7 @@ func (c RegistrationController) AddRegistration(ctx echo.Context) error {
 		return wrapError(ctx, err)
 	}
 
-	return ctx.JSON(http.StatusOK, u)
+	return ctx.JSON(http.StatusCreated, u)
 }
 
 func (c RegistrationController) ConfirmRegistration(ctx echo.Context) error {

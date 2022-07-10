@@ -19,17 +19,17 @@ func StartWebServer(
 ) {
 	e := echo.New()
 
-	e.GET("/registrations/:id", r.ConfirmRegistration)
 	e.POST("/registrations", r.AddRegistration)
+	e.GET("/registrations/:id", r.ConfirmRegistration)
 	e.GET("/customers", c.ListCustomers)
-	e.PATCH("/customers/:id", c.UpdateRegistration)
+	e.PATCH("/customers/:id", c.UpdateCustomer)
 
 	go func() {
 		<-ctx.Done()
 		c, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 		defer cancel()
 		if err := e.Shutdown(c); err != nil {
-			log.Fatal(err)
+			log.Printf("[ERROR] %+v", err)
 		}
 	}()
 
@@ -37,7 +37,7 @@ func StartWebServer(
 	go func() {
 		defer lock.Done()
 		if err := e.Start(cfg.Port); err != nil {
-			log.Fatal(err)
+			log.Printf("[ERROR] %+v", err)
 		} else {
 			log.Println("shutting down the web server")
 		}

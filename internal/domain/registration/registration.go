@@ -24,7 +24,7 @@ func NewRegistration(ctx context.Context, email domain.Email, policy domain.Uniq
 	}
 	ok, err := policy.IsUnique(ctx, email)
 	if err != nil {
-		return Registration{}, faults.Wrapf(err, "failed to check uniqueness of email")
+		return Registration{}, faults.Wrapf(err, "failed to check uniqueness of email on registration")
 	}
 	if !ok {
 		return Registration{}, faults.Errorf("the provided e-mail %s is not unique", email)

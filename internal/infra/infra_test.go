@@ -2,14 +2,15 @@ package infra_test
 
 import (
 	"context"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"strconv"
+	"strings"
 	"testing"
 	"time"
 
 	"github.com/docker/go-connections/nat"
-	_ "github.com/golang-migrate/migrate/v4/source/file"
-	_ "github.com/lib/pq"
 	"github.com/quintans/faults"
 	"github.com/quintans/go-clean-ddd/internal/infra"
 	"github.com/quintans/toolkit/latch"
@@ -18,9 +19,20 @@ import (
 	"github.com/testcontainers/testcontainers-go/wait"
 )
 
+const baseUrl = "http://localhost:8080"
+
 func TestRegister(t *testing.T) {
-	time.Sleep(time.Second)
-	require.True(t, true)
+	resp, err := http.Post(baseUrl+"/registrations", "application/json; charset=UTF-8", strings.NewReader(`{"email":"abc@xpto.pt"}`))
+	require.NoError(t, err)
+	defer resp.Body.Close()
+
+	require.Equal(t, http.StatusCreated, resp.StatusCode)
+	body, err := ioutil.ReadAll(resp.Body)
+	require.NoError(t, err)
+	require.NotEmpty(t, body)
+
+	// give time for the outbox flush to trigger
+	time.Sleep(2 * time.Second)
 }
 
 func TestMain(m *testing.M) {
@@ -34,6 +46,7 @@ func TestMain(m *testing.M) {
 	defer cancel()
 
 	infra.Start(ctx, lock, infra.Config{
+		OutboxHeartbeat: time.Second,
 		DbConfig: infra.DbConfig{
 			DbName:     dbCfg.Database,
 			DbHost:     dbCfg.Host,
@@ -93,8 +106,8 @@ func setup() (DBConfig, func(), error) {
 	}
 
 	tearDown := func() {
-		// this crashes without trace
-		container.Terminate(ctx)
+		// this is crashing without a trace
+		container.Terminate(context.Background())
 	}
 
 	ip, err := container.Host(ctx)

@@ -1,6 +1,7 @@
 package web
 
 import (
+	"log"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
@@ -37,7 +38,7 @@ func NewCustomerController(
 	}
 }
 
-func (c CustomerController) UpdateRegistration(ctx echo.Context) error {
+func (c CustomerController) UpdateCustomer(ctx echo.Context) error {
 	id := ctx.Param("id")
 
 	var reg UpdateCommand
@@ -75,6 +76,7 @@ func wrapBad(ctx echo.Context, err error) error {
 }
 
 func wrapError(ctx echo.Context, err error) error {
+	log.Printf("[ERROR] %+v", err)
 	return ctx.JSON(http.StatusInternalServerError, err.Error())
 }
 
