@@ -8,15 +8,15 @@ import (
 	"github.com/quintans/go-clean-ddd/internal/domain/customer"
 )
 
+type AllCustomersHandler interface {
+	Handle(context.Context) ([]CustomerDTO, error)
+}
+
 type CustomerDTO struct {
 	Id        string
 	Email     string
 	FirstName string
 	LastName  string
-}
-
-type AllCustomersHandler interface {
-	Handle(context.Context) ([]CustomerDTO, error)
 }
 
 type AllCustomers struct {

@@ -6,7 +6,7 @@ import (
 	"fmt"
 
 	"github.com/quintans/faults"
-	"github.com/quintans/go-clean-ddd/lib/event"
+	"github.com/quintans/go-clean-ddd/lib/eventbus"
 )
 
 var ErrTxNotFound = errors.New("no transaction found in context")
@@ -21,7 +21,7 @@ type Tx interface {
 }
 
 type EventPopper interface {
-	PopEvents() []event.DomainEvent
+	PopEvents() []eventbus.DomainEvent
 }
 
 type TxFunc[T Tx] func(context.Context, T) (EventPopper, error)
@@ -41,10 +41,10 @@ func GetTxFromContext[T Tx](ctx context.Context) (T, error) {
 
 type Transaction[T Tx] struct {
 	txFactory func(context.Context) (Tx, error)
-	eventBus  event.EventBuser
+	eventBus  eventbus.EventBuser
 }
 
-func New[T Tx](eventBus event.EventBuser, txFactory func(context.Context) (Tx, error)) *Transaction[T] {
+func New[T Tx](eventBus eventbus.EventBuser, txFactory func(context.Context) (Tx, error)) *Transaction[T] {
 	return &Transaction[T]{
 		txFactory: txFactory,
 		eventBus:  eventBus,

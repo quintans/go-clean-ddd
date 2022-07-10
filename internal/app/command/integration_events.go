@@ -7,6 +7,8 @@ import (
 	"github.com/quintans/go-clean-ddd/internal/domain"
 )
 
+// this command handler would belong to a separate microservice responsible to send emails
+
 type SendEmailHandler interface {
 	Handle(context.Context, SendEmailCommand) error
 }

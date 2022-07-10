@@ -7,7 +7,7 @@ import (
 	"github.com/quintans/faults"
 	"github.com/quintans/go-clean-ddd/internal/domain"
 	libent "github.com/quintans/go-clean-ddd/lib/entity"
-	libevt "github.com/quintans/go-clean-ddd/lib/event"
+	"github.com/quintans/go-clean-ddd/lib/eventbus"
 )
 
 type Registration struct {
@@ -61,7 +61,7 @@ func (r *Registration) Verify() {
 	r.core.AddEvent(EmailVerified{Email: r.email})
 }
 
-func (r Registration) PopEvents() []libevt.DomainEvent {
+func (r Registration) PopEvents() []eventbus.DomainEvent {
 	return r.core.PopEvents()
 }
 

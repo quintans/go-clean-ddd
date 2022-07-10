@@ -1,4 +1,4 @@
-package command
+package event
 
 import (
 	"context"
@@ -7,7 +7,7 @@ import (
 	"github.com/quintans/go-clean-ddd/internal/app"
 	"github.com/quintans/go-clean-ddd/internal/domain/customer"
 	"github.com/quintans/go-clean-ddd/internal/domain/registration"
-	"github.com/quintans/go-clean-ddd/lib/event"
+	"github.com/quintans/go-clean-ddd/lib/eventbus"
 )
 
 type EmailVerifiedHandler struct {
@@ -22,7 +22,7 @@ func NewEmailVerifiedHandler(customerRepository app.CustomerRepository, customer
 	}
 }
 
-func (h EmailVerifiedHandler) Handle(ctx context.Context, e event.DomainEvent) error {
+func (h EmailVerifiedHandler) Handle(ctx context.Context, e eventbus.DomainEvent) error {
 	switch t := e.(type) {
 	case registration.EmailVerified:
 		return h.handleEmailVerified(ctx, t)

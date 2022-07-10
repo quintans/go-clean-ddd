@@ -9,12 +9,12 @@ import (
 	"github.com/quintans/go-clean-ddd/internal/domain/registration"
 )
 
-type CreateRegistrationCommand struct {
-	Email string
-}
-
 type CreateRegistrationHandler interface {
 	Handle(context.Context, CreateRegistrationCommand) (string, error)
+}
+
+type CreateRegistrationCommand struct {
+	Email string
 }
 
 type CreateRegistration struct {

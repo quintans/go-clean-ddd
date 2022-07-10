@@ -9,14 +9,14 @@ import (
 	"github.com/quintans/go-clean-ddd/internal/domain/customer"
 )
 
+type UpdateCustomerHandler interface {
+	Handle(context.Context, UpdateCustomerCommand) error
+}
+
 type UpdateCustomerCommand struct {
 	Id        string
 	FirstName string
 	LastName  string
-}
-
-type UpdateCustomerHandler interface {
-	Handle(context.Context, UpdateCustomerCommand) error
 }
 
 type UpdateCustomer struct {

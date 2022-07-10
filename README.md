@@ -8,13 +8,11 @@ This demo simulates a customer registration.
 
 It intends to demonstrate the following:
 - project structure 
+- domain event for dependency between 2 aggregates (synchronous)
+- unit of work (transaction) across 2 aggregates
+- optimistic locking
 - [outbox pattern](https://microservices.io/patterns/data/transactional-outbox.html) to update database and send events
 - integration event, calling an external gateway: fake message queue
-- domain event for dependency (transaction) between 2 aggregates (synchronous)
-- unit of work across 2 aggregates
-- optimistic locking
-
-> transaction between two or more aggregates is done through the use of domain events
 
 The business rules  are the following:
 - When a new customer wants to register, it will provide an email. If the email is unique a new registration aggregate is created.

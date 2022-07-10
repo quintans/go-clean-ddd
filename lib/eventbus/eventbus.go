@@ -1,4 +1,4 @@
-package event
+package eventbus
 
 import "context"
 
@@ -19,7 +19,7 @@ type EventBus struct {
 	handlers map[string][]Handler
 }
 
-func NewEventBus() *EventBus {
+func New() *EventBus {
 	return &EventBus{
 		handlers: map[string][]Handler{},
 	}
