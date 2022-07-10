@@ -41,10 +41,10 @@ func GetTxFromContext[T Tx](ctx context.Context) (T, error) {
 
 type Transaction[T Tx] struct {
 	txFactory func(context.Context) (Tx, error)
-	eventBus  eventbus.EventBuser
+	eventBus  eventbus.Publisher
 }
 
-func New[T Tx](eventBus eventbus.EventBuser, txFactory func(context.Context) (Tx, error)) *Transaction[T] {
+func New[T Tx](eventBus eventbus.Publisher, txFactory func(context.Context) (Tx, error)) *Transaction[T] {
 	return &Transaction[T]{
 		txFactory: txFactory,
 		eventBus:  eventBus,
@@ -67,7 +67,7 @@ func (tm *Transaction[T]) Current(ctx context.Context, fn TxFunc[T]) error {
 		return faults.Wrap(err)
 	}
 	if popper != nil && tm.eventBus != nil {
-		return tm.eventBus.Fire(ctx, popper.PopEvents()...)
+		return tm.eventBus.Publish(ctx, popper.PopEvents()...)
 	}
 	return nil
 }
@@ -97,7 +97,7 @@ func (tm *Transaction[T]) makeTxHandler(ctx context.Context, fn TxFunc[T]) error
 		return faults.Wrap(err)
 	}
 	if popper != nil && tm.eventBus != nil {
-		err := tm.eventBus.Fire(ctx, popper.PopEvents()...)
+		err := tm.eventBus.Publish(ctx, popper.PopEvents()...)
 		if err != nil {
 			return faults.Wrap(err)
 		}
