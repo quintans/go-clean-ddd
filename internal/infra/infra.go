@@ -3,6 +3,7 @@ package infra
 import (
 	"context"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/quintans/go-clean-ddd/fake"
 	"github.com/quintans/go-clean-ddd/internal/app/command"
 	"github.com/quintans/go-clean-ddd/internal/app/event"
@@ -13,7 +14,6 @@ import (
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/fakeemail"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/fakepub"
 	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres"
-	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent"
 	"github.com/quintans/go-clean-ddd/lib/eventbus"
 	"github.com/quintans/go-clean-ddd/lib/outbox"
 	"github.com/quintans/go-clean-ddd/lib/transaction"
@@ -30,10 +30,10 @@ func Start(ctx context.Context, lock *latch.CountDownLatch, cfg Config) {
 	}()
 
 	bus := eventbus.New()
-	trans := transaction.New[*ent.Tx](
+	trans := transaction.New[*sqlx.Tx](
 		bus,
 		func(ctx context.Context) (transaction.Tx, error) {
-			return db.Tx(ctx)
+			return db.Beginx()
 		},
 	)
 	customerWrite := postgres.NewCustomerRepository(trans)

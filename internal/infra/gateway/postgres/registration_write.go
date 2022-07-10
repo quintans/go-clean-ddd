@@ -3,32 +3,38 @@ package postgres
 import (
 	"context"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/quintans/faults"
 	"github.com/quintans/go-clean-ddd/internal/domain"
 	"github.com/quintans/go-clean-ddd/internal/domain/registration"
-	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent"
-	entreg "github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent/registration"
 	"github.com/quintans/go-clean-ddd/lib/transaction"
 )
 
-type RegistrationRepository struct {
-	trans *transaction.Transaction[*ent.Tx]
+type Registration struct {
+	ID       string `db:"id"`
+	Email    string
+	Verified bool
 }
 
-func NewRegistrationRepository(trans *transaction.Transaction[*ent.Tx]) RegistrationRepository {
+type RegistrationRepository struct {
+	trans *transaction.Transaction[*sqlx.Tx]
+}
+
+func NewRegistrationRepository(trans *transaction.Transaction[*sqlx.Tx]) RegistrationRepository {
 	return RegistrationRepository{
 		trans: trans,
 	}
 }
 
 func (r RegistrationRepository) Create(ctx context.Context, c registration.Registration) error {
-	err := r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) (transaction.EventPopper, error) {
-		_, err := tx.Registration.Create().
-			SetID(c.ID()).
-			SetEmail(c.Email().String()).
-			SetVerified(c.Verified()).
-			Save(ctx)
-
+	err := r.trans.Current(ctx, func(ctx context.Context, tx *sqlx.Tx) (transaction.EventPopper, error) {
+		_, err := tx.ExecContext(
+			ctx,
+			"INSERT INTO registrations(id, email, verified) VALUES ($1, $2, $3)",
+			c.ID(),
+			c.Email().String(),
+			false,
+		)
 		return c, faults.Wrap(err)
 	})
 
@@ -36,7 +42,7 @@ func (r RegistrationRepository) Create(ctx context.Context, c registration.Regis
 }
 
 func (r RegistrationRepository) Update(ctx context.Context, id string, apply func(context.Context, *registration.Registration) error) error {
-	err := r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) (transaction.EventPopper, error) {
+	err := r.trans.Current(ctx, func(ctx context.Context, tx *sqlx.Tx) (transaction.EventPopper, error) {
 		reg, err := r.getByID(ctx, tx, id)
 		if err != nil {
 			return nil, faults.Wrap(err)
@@ -52,25 +58,33 @@ func (r RegistrationRepository) Update(ctx context.Context, id string, apply fun
 			return nil, faults.Wrap(err)
 		}
 
-		_, err = tx.Registration.
-			UpdateOne(reg).
-			SetVerified(true).
-			Save(ctx)
-		return registration, faults.Wrap(err)
+		_, err = tx.ExecContext(
+			ctx,
+			"UPDATE registrations SET verified=$1 WHERE id=$2",
+			true,
+			id,
+		)
+		if err != nil {
+			return nil, faults.Wrap(err)
+		}
+		return registration, nil
 	})
 
 	return errorMap(err)
 }
 
-func (r RegistrationRepository) getByID(ctx context.Context, tx *ent.Tx, id string) (*ent.Registration, error) {
-	e, err := tx.Registration.Query().Where(entreg.ID(id)).Only(ctx)
-	if err != nil {
-		return nil, errorMap(err)
-	}
-	return e, nil
+func (r RegistrationRepository) getByID(ctx context.Context, tx *sqlx.Tx, id string) (Registration, error) {
+	reg := Registration{}
+	err := tx.GetContext(
+		ctx,
+		&reg,
+		"SELECT * FROM registrations WHERE id=$1",
+		id,
+	)
+	return reg, errorMap(err)
 }
 
-func toDomainRegistration(e *ent.Registration) (registration.Registration, error) {
+func toDomainRegistration(e Registration) (registration.Registration, error) {
 	email, err := domain.NewEmail(e.Email)
 	if err != nil {
 		return registration.Registration{}, faults.Wrap(err)

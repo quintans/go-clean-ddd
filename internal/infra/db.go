@@ -6,21 +6,21 @@ import (
 	"strings"
 
 	"github.com/quintans/faults"
-	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent"
 
 	"github.com/golang-migrate/migrate/v4"
 	"github.com/golang-migrate/migrate/v4/database/postgres"
 	_ "github.com/golang-migrate/migrate/v4/source/file"
+	"github.com/jmoiron/sqlx"
 	_ "github.com/lib/pq"
 )
 
 // NewDB creates a new postgres database connection.
 // It should receive database connection configuration but for the demo purposes we will ignore it
-func NewDB(cfg DbConfig) *ent.Client {
+func NewDB(cfg DbConfig) *sqlx.DB {
 	options := []string{"sslmode=disable"}
 	addr := fmt.Sprintf("postgres://%s:%s@%s:%d/%s?%s", cfg.DbUser, cfg.DbPassword, cfg.DbHost, cfg.DbPort, cfg.DbName, strings.Join(options, "&"))
 
-	client, err := ent.Open("postgres", addr)
+	db, err := sqlx.Connect("postgres", addr)
 	if err != nil {
 		log.Fatalf("Unable to open connection: %s", err)
 	}
@@ -30,7 +30,7 @@ func NewDB(cfg DbConfig) *ent.Client {
 		log.Fatalf("Unable to migrate database: %s", err)
 	}
 
-	return client
+	return db
 }
 
 func migration(addr string) error {

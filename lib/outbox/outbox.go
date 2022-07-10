@@ -5,14 +5,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
-	"fmt"
 	"log"
-	"strconv"
-	"strings"
 	"time"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/quintans/faults"
-	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent"
 	"github.com/quintans/go-clean-ddd/lib/transaction"
 	"github.com/quintans/toolkit/latch"
 )
@@ -33,25 +30,20 @@ type Event interface {
 }
 
 type outbox struct {
-	Kind    string
-	Payload []byte
-}
-
-func restoreOutbox(kind string, payload []byte) *outbox {
-	return &outbox{
-		Kind:    kind,
-		Payload: payload,
-	}
+	Id       int64
+	Kind     string
+	Payload  []byte
+	Consumed bool
 }
 
 type OutboxManager struct {
-	trans     *transaction.Transaction[*ent.Tx]
+	trans     *transaction.Transaction[*sqlx.Tx]
 	batchSize uint
 	publisher Publisher
 }
 
 func New(
-	trans *transaction.Transaction[*ent.Tx],
+	trans *transaction.Transaction[*sqlx.Tx],
 	batchSize uint,
 	publisher Publisher,
 ) OutboxManager {
@@ -67,12 +59,11 @@ func (r OutboxManager) Create(ctx context.Context, e Event) error {
 	if err != nil {
 		return faults.Wrap(err)
 	}
-	return r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) (transaction.EventPopper, error) {
-		fmt.Println("===> inserting into outbox", e)
+	return r.trans.Current(ctx, func(ctx context.Context, tx *sqlx.Tx) (transaction.EventPopper, error) {
 		_, err := tx.ExecContext(
 			ctx,
 			"INSERT INTO outbox(kind, payload, consumed) VALUES($1, $2, FALSE)",
-			e.Kind, b,
+			e.Kind(), b,
 		)
 		return nil, faults.Wrap(err)
 	})
@@ -102,7 +93,7 @@ func (f OutboxManager) consumeAll(ctx context.Context) error {
 	done := false
 	for !done {
 		var err error
-		done, err = f.consumeBatch(ctx, func(events []*outbox) error {
+		done, err = f.consumeBatch(ctx, func(events []outbox) error {
 			for _, e := range events {
 				err := f.publisher.Publish(ctx, Message{
 					Kind:    e.Kind,
@@ -125,8 +116,8 @@ func (f OutboxManager) consumeAll(ctx context.Context) error {
 	return nil
 }
 
-func (r OutboxManager) consumeBatch(ctx context.Context, fn func([]*outbox) error) (done bool, err error) {
-	err = r.trans.New(ctx, func(ctx context.Context, tx *ent.Tx) (transaction.EventPopper, error) {
+func (r OutboxManager) consumeBatch(ctx context.Context, fn func([]outbox) error) (done bool, err error) {
+	err = r.trans.New(ctx, func(ctx context.Context, tx *sqlx.Tx) (transaction.EventPopper, error) {
 		locked, err := getAdvisoryLock(ctx, tx)
 		if err != nil {
 			return nil, faults.Errorf("getting advisory lock: %w", err)
@@ -135,95 +126,53 @@ func (r OutboxManager) consumeBatch(ctx context.Context, fn func([]*outbox) erro
 			return nil, errLocking
 		}
 
-		rows, err := tx.QueryContext(
+		// It should give an error sql.ErrNoRows
+		outboxes := []outbox{}
+		err = tx.SelectContext(
 			ctx,
-			`SELECT id, kind, payload FROM outbox WHERE kind = 'XXX' ORDER BY id ASC LIMIT $1`,
+			&outboxes,
+			`SELECT * FROM outbox ORDER BY id ASC LIMIT $1`,
 			r.batchSize,
 		)
 		if err != nil {
-			fmt.Println("===> no rows?", err)
+			if errors.Is(err, sql.ErrNoRows) {
+				done = true
+				return nil, nil
+			}
 			return nil, faults.Errorf("fetching events batch: %w", err)
 		}
-		fmt.Println("===> fetching rows")
-		x := 0
-		for rows.Next() {
-			fmt.Println("===> select outbox")
-			if err := rows.Scan(&x); err != nil {
-				return nil, faults.Wrap(err)
-			}
-			fmt.Println("===> X", x)
-		}
 
-		var entities []*outbox
-		var id int64
-		var kind string
-		var payload []byte
-
-		var in strings.Builder
-		var args []any
-		err = forEachRow(rows, func() {
-			entities = append(entities, restoreOutbox(kind, payload))
-			fmt.Println("===>", id, ", ", kind, ", ", payload)
-
-			args = append(args, id)
-			if len(args) > 1 {
-				in.WriteString(", ")
-			}
-			in.WriteString("$" + strconv.Itoa(len(args)))
-
-			// reset
-			id = 0
-			kind = ""
-			payload = nil
-		}, &id, &kind, &payload)
-		if err != nil {
-			return nil, faults.Errorf("iterating over events rows: %w", err)
-		}
-
-		if len(args) == 0 {
+		if len(outboxes) == 0 {
 			done = true
 			return nil, nil
 		}
 
-		s := fmt.Sprintf("UPDATE outbox SET consumed=TRUE WHERE id IN(%s)", in.String())
-		fmt.Println("===> sql:", s)
-		_, err = tx.ExecContext(ctx, s, args...)
+		ids := make([]int64, len(outboxes))
+		for k, v := range outboxes {
+			ids[k] = v.Id
+		}
+		query, args, err := sqlx.In("UPDATE outbox SET consumed=TRUE WHERE id IN(?)", ids)
+		if err != nil {
+			return nil, faults.Errorf("expanding ids to consume: %w", err)
+		}
+		query = tx.Rebind(query)
+		_, err = tx.ExecContext(ctx, query, args...)
 		if err != nil {
 			return nil, faults.Errorf("consuming events batch: %w", err)
 		}
 
-		return nil, fn(entities)
+		return nil, fn(outboxes)
 	})
 	return done, faults.Wrap(err)
 }
 
-func getAdvisoryLock(ctx context.Context, tx *ent.Tx) (bool, error) {
+func getAdvisoryLock(ctx context.Context, tx *sqlx.Tx) (bool, error) {
+	ok := false
 	// 123 is the lock key
-	rows, err := tx.QueryContext(ctx, "SELECT pg_try_advisory_xact_lock(123)")
+	err := tx.GetContext(ctx, &ok, "SELECT pg_try_advisory_xact_lock(123)")
 	if err != nil {
 		return false, faults.Wrap(err)
 	}
 
-	var ok bool
-	err = forEachRow(rows, nil, &ok)
-	if err != nil {
-		return false, faults.Wrap(err)
-	}
 	return ok, nil
-}
-
-func forEachRow(rows *sql.Rows, fn func(), v ...any) error {
-	defer rows.Close()
-	for rows.Next() {
-		if err := rows.Scan(v...); err != nil {
-			return faults.Wrap(err)
-		}
-		if fn != nil {
-			fn()
-		} else {
-			break
-		}
-	}
-
-	return faults.Wrap(rows.Err())
 }

@@ -2,19 +2,19 @@ package postgres
 
 import (
 	"context"
+	"database/sql"
 	"errors"
 
+	"github.com/jmoiron/sqlx"
 	"github.com/quintans/faults"
 	"github.com/quintans/go-clean-ddd/internal/app"
 	"github.com/quintans/go-clean-ddd/internal/domain"
 	"github.com/quintans/go-clean-ddd/internal/domain/customer"
-	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent"
-	entcust "github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres/ent/customer"
 	"github.com/quintans/go-clean-ddd/lib/transaction"
 )
 
 type Customer struct {
-	Id        string
+	ID        string `db:"id"`
 	Version   int
 	FirstName string `db:"first_name"`
 	LastName  string `db:"last_name"`
@@ -22,24 +22,25 @@ type Customer struct {
 }
 
 type CustomerRepository struct {
-	trans *transaction.Transaction[*ent.Tx]
+	trans *transaction.Transaction[*sqlx.Tx]
 }
 
-func NewCustomerRepository(trans *transaction.Transaction[*ent.Tx]) CustomerRepository {
+func NewCustomerRepository(trans *transaction.Transaction[*sqlx.Tx]) CustomerRepository {
 	return CustomerRepository{
 		trans: trans,
 	}
 }
 
 func (r CustomerRepository) Create(ctx context.Context, c customer.Customer) error {
-	err := r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) (transaction.EventPopper, error) {
-		_, err := tx.Customer.
-			Create().
-			SetID(c.ID().String()).
-			SetFirstName(c.FullName().FirstName()).
-			SetLastName(c.FullName().LastName()).
-			SetEmail(c.Email().String()).
-			Save(ctx)
+	err := r.trans.Current(ctx, func(ctx context.Context, tx *sqlx.Tx) (transaction.EventPopper, error) {
+		_, err := tx.ExecContext(
+			ctx,
+			"INSERT INTO customers (id, first_name, last_name, email, version) VALUES ($1, $2, $3, $4, 1)",
+			c.ID().String(),
+			c.FullName().FirstName(),
+			c.FullName().LastName(),
+			c.Email().String(),
+		)
 		return nil, faults.Wrap(err)
 	})
 
@@ -47,8 +48,8 @@ func (r CustomerRepository) Create(ctx context.Context, c customer.Customer) err
 }
 
 func (r CustomerRepository) Update(ctx context.Context, id customer.CustomerID, apply func(context.Context, *customer.Customer) error) error {
-	err := r.trans.Current(ctx, func(ctx context.Context, tx *ent.Tx) (transaction.EventPopper, error) {
-		c, err := r.getByID(ctx, tx, id)
+	err := r.trans.Current(ctx, func(ctx context.Context, tx *sqlx.Tx) (transaction.EventPopper, error) {
+		c, err := r.getByID(ctx, tx, id.String())
 		if err != nil {
 			return nil, faults.Wrap(err)
 		}
@@ -64,18 +65,19 @@ func (r CustomerRepository) Update(ctx context.Context, id customer.CustomerID, 
 		}
 
 		// uses optimistic locking
-		n, err := tx.Customer.
-			Update().
-			Where(
-				entcust.And(
-					entcust.IDEQ(cust.ID().String()),
-					entcust.VersionEQ(c.Version),
-				),
-			).
-			SetFirstName(cust.FullName().FirstName()).
-			SetLastName(cust.FullName().LastName()).
-			SetEmail(cust.Email().String()).
-			Save(ctx)
+		res, err := tx.ExecContext(
+			ctx,
+			"UPDATE customers SET first_name=$1, last_name=$2, email=$3, version=version+1 WHERE id=$4 AND version=$5",
+			c.FirstName,
+			c.LastName,
+			c.Email,
+			c.ID,
+			c.Version,
+		)
+		if err != nil {
+			return nil, faults.Wrap(err)
+		}
+		n, err := res.RowsAffected()
 		if err != nil {
 			return nil, faults.Wrap(err)
 		}
@@ -88,12 +90,15 @@ func (r CustomerRepository) Update(ctx context.Context, id customer.CustomerID, 
 	return errorMap(err)
 }
 
-func (r CustomerRepository) getByID(ctx context.Context, tx *ent.Tx, id customer.CustomerID) (*ent.Customer, error) {
-	c, err := tx.Customer.Query().Where(entcust.ID(id.String())).Only(ctx)
-	if err != nil {
-		return nil, errorMap(err)
-	}
-	return c, nil
+func (r CustomerRepository) getByID(ctx context.Context, tx *sqlx.Tx, id string) (Customer, error) {
+	c := Customer{}
+	err := tx.GetContext(
+		ctx,
+		&c,
+		"SELECT * FROM customers WHERE id=$1",
+		id,
+	)
+	return c, errorMap(err)
 }
 
 func errorMap(err error) error {
@@ -101,14 +106,13 @@ func errorMap(err error) error {
 		return nil
 	}
 
-	var target *ent.NotFoundError
-	if errors.As(err, &target) {
+	if errors.Is(err, sql.ErrNoRows) {
 		return faults.Wrap(app.ErrNotFound)
 	}
 	return faults.Wrap(err)
 }
 
-func toDomainCustomers(cs []*ent.Customer) ([]customer.Customer, error) {
+func toDomainCustomers(cs []Customer) ([]customer.Customer, error) {
 	dcs := make([]customer.Customer, len(cs))
 	for k, v := range cs {
 		dc, err := toDomainCustomer(v)
@@ -120,7 +124,7 @@ func toDomainCustomers(cs []*ent.Customer) ([]customer.Customer, error) {
 	return dcs, nil
 }
 
-func toDomainCustomer(c *ent.Customer) (customer.Customer, error) {
+func toDomainCustomer(c Customer) (customer.Customer, error) {
 	id, err := customer.ParseCustomerID(c.ID)
 	if err != nil {
 		return customer.Customer{}, faults.Wrap(err)

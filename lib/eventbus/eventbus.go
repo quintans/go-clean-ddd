@@ -1,6 +1,9 @@
 package eventbus
 
-import "context"
+import (
+	"context"
+	"log"
+)
 
 type DomainEvent interface {
 	Kind() string
@@ -35,7 +38,8 @@ func (m EventBus) Publish(ctx context.Context, events ...DomainEvent) error {
 		handlers := m.handlers[e.Kind()]
 		for _, h := range handlers {
 			if err := h(ctx, e); err != nil {
-				return nil
+				log.Printf("[ERROR] %+v", err)
+				// return faults.Wrap(err)
 			}
 		}
 	}
