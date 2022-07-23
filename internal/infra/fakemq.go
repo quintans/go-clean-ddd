@@ -14,11 +14,12 @@ func StartMQ(
 	lock *latch.CountDownLatch,
 	regSub fakesub.RegistrationController,
 ) *fake.FakeMQ {
-	mq := fake.NewMQ()
-
-	mq.Subscribe(registration.EventRegistrationCreated, regSub)
-
 	lock.Add(1)
+
+	mq := fake.NewMQ()
+	mq.Subscribe(registration.EventRegistrationCreated, regSub)
+	mq.Start()
+
 	go func() {
 		defer lock.Done()
 		<-ctx.Done()

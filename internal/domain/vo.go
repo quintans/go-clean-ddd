@@ -109,3 +109,12 @@ func MustNewEmail(
 func (e Email) IsZero() bool {
 	return e == Email{}
 }
+
+func (e Email) MarshalText() (text []byte, err error) {
+	return []byte(e.email), nil
+}
+
+func (e *Email) UnmarshalText(text []byte) error {
+	e.email = string(text)
+	return e.validate()
+}

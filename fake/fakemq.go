@@ -2,6 +2,7 @@ package fake
 
 import (
 	"context"
+	"log"
 	"sync"
 )
 
@@ -61,7 +62,10 @@ func (f *FakeMQ) Start() {
 		for e := range f.channel {
 			subs := f.subscribers[e.Kind]
 			for _, s := range subs {
-				_ = s.Handle(context.Background(), e)
+				err := s.Handle(context.Background(), e)
+				if err != nil {
+					log.Fatalf("[ERROR] %+v", err)
+				}
 			}
 		}
 	}()

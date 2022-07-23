@@ -13,12 +13,12 @@ func NewEmailClient() EmailClient {
 	return EmailClient{}
 }
 
-func (e EmailClient) Send(destination string, body string) {
-	fmt.Println("===> faking send email to", destination, "\nbody: ", body)
+func (e EmailClient) Send(destination string, url string) {
+	fmt.Println("===> faking send email to", destination, "\nurl: ", url)
 	go func() {
 		time.Sleep(time.Second)
 		fmt.Println("===> faking user confirmation")
-		resp, err := http.Get(body)
+		resp, err := http.Get(url)
 		if err != nil {
 			fmt.Println("ERROR while calling confirmation:", err)
 		}
