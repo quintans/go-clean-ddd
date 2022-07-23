@@ -2,6 +2,7 @@ package infra
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/quintans/go-clean-ddd/fake"
@@ -66,6 +67,7 @@ func Start(ctx context.Context, lock *latch.CountDownLatch, cfg Config) {
 	bus.Subscribe(registration.EventRegistrationCreated, func(ctx context.Context, de eventbus.DomainEvent) error {
 		// DEMO: transform the incoming domain event into an integration event if there is a need to.
 		// In this case there is no need to.
+		fmt.Println("===> creating outbox entry:", de, de.Kind())
 		return outboxMan.Create(ctx, de)
 	})
 	outboxMan.Start(ctx, lock, cfg.OutboxHeartbeat)

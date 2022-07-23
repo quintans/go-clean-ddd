@@ -11,8 +11,10 @@ import (
 	"time"
 
 	"github.com/docker/go-connections/nat"
+	"github.com/jmoiron/sqlx"
 	"github.com/quintans/faults"
 	"github.com/quintans/go-clean-ddd/internal/infra"
+	"github.com/quintans/go-clean-ddd/internal/infra/gateway/postgres"
 	"github.com/quintans/toolkit/latch"
 	"github.com/stretchr/testify/require"
 	testcontainers "github.com/testcontainers/testcontainers-go"
@@ -20,6 +22,8 @@ import (
 )
 
 const baseUrl = "http://localhost:8080"
+
+var db *sqlx.DB
 
 func TestRegister(t *testing.T) {
 	resp, err := http.Post(baseUrl+"/registrations", "application/json; charset=UTF-8", strings.NewReader(`{"email":"abc@xpto.pt"}`))
@@ -31,8 +35,27 @@ func TestRegister(t *testing.T) {
 	require.NoError(t, err)
 	require.NotEmpty(t, body)
 
+	registrations := getAllRegistrations(t)
+	require.Len(t, registrations, 1)
+	reg := registrations[0]
+	require.Equal(t, "abc@xpto.pt", reg.Email)
+	require.Equal(t, false, reg.Verified)
+
 	// give time for the outbox flush to trigger
 	time.Sleep(2 * time.Second)
+
+	registrations = getAllRegistrations(t)
+	require.Len(t, registrations, 1)
+	reg = registrations[0]
+	require.Equal(t, "abc@xpto.pt", reg.Email)
+	require.Equal(t, true, reg.Verified)
+}
+
+func getAllRegistrations(t *testing.T) []postgres.Registration {
+	var registrations []postgres.Registration
+	err := db.Select(&registrations, "SELECT * FROM registrations")
+	require.NoError(t, err)
+	return registrations
 }
 
 func TestMain(m *testing.M) {
@@ -45,19 +68,22 @@ func TestMain(m *testing.M) {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 
+	dbConfig := infra.DbConfig{
+		DbName:     dbCfg.Database,
+		DbHost:     dbCfg.Host,
+		DbPort:     dbCfg.Port,
+		DbUser:     dbCfg.Username,
+		DbPassword: dbCfg.Password,
+	}
 	infra.Start(ctx, lock, infra.Config{
 		OutboxHeartbeat: time.Second,
-		DbConfig: infra.DbConfig{
-			DbName:     dbCfg.Database,
-			DbHost:     dbCfg.Host,
-			DbPort:     dbCfg.Port,
-			DbUser:     dbCfg.Username,
-			DbPassword: dbCfg.Password,
-		},
+		DbConfig:        dbConfig,
 		WebConfig: infra.WebConfig{
 			Port: ":8080",
 		},
 	})
+
+	db = infra.NewDB(dbConfig)
 
 	code := m.Run()
 

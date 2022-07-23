@@ -5,6 +5,7 @@ import (
 	"database/sql"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"log"
 	"time"
 
@@ -70,6 +71,7 @@ func (r OutboxManager) Create(ctx context.Context, e Event) error {
 }
 
 func (c OutboxManager) Start(ctx context.Context, lock *latch.CountDownLatch, heartbeat time.Duration) {
+	fmt.Println("===> heartbeat:", heartbeat)
 	lock.Add(1)
 	go func() {
 		defer lock.Done()
@@ -80,6 +82,7 @@ func (c OutboxManager) Start(ctx context.Context, lock *latch.CountDownLatch, he
 			case <-ctx.Done():
 				return
 			case <-ticker.C:
+				fmt.Println("===> tick:", time.Now())
 				err := c.consumeAll(ctx)
 				if err != nil {
 					log.Printf("ERROR: failed to execute flush outbox: %+v\n", err)
@@ -131,7 +134,7 @@ func (r OutboxManager) consumeBatch(ctx context.Context, fn func([]outbox) error
 		err = tx.SelectContext(
 			ctx,
 			&outboxes,
-			`SELECT * FROM outbox ORDER BY id ASC LIMIT $1`,
+			`SELECT * FROM outbox WHERE consumed=FALSE ORDER BY id ASC LIMIT $1`,
 			r.batchSize,
 		)
 		if err != nil {
@@ -142,8 +145,10 @@ func (r OutboxManager) consumeBatch(ctx context.Context, fn func([]outbox) error
 			return nil, faults.Errorf("fetching events batch: %w", err)
 		}
 
+		fmt.Println("===> outboxes:", outboxes)
+
+		done = len(outboxes) < int(r.batchSize)
 		if len(outboxes) == 0 {
-			done = true
 			return nil, nil
 		}
 

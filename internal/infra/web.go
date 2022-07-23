@@ -2,7 +2,9 @@ package infra
 
 import (
 	"context"
+	"errors"
 	"log"
+	"net/http"
 	"time"
 
 	"github.com/labstack/echo/v4"
@@ -36,10 +38,11 @@ func StartWebServer(
 	lock.Add(1)
 	go func() {
 		defer lock.Done()
-		if err := e.Start(cfg.Port); err != nil {
-			log.Printf("[ERROR] %+v", err)
+		err := e.Start(cfg.Port)
+		if err == nil || errors.Is(err, http.ErrServerClosed) {
+			log.Println("web server closed")
 		} else {
-			log.Println("shutting down the web server")
+			log.Printf("[ERROR] %+v", err)
 		}
 	}()
 }
