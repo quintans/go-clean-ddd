@@ -76,7 +76,7 @@ func TestMain(m *testing.M) {
 		DbPassword: dbCfg.Password,
 	}
 	infra.Start(ctx, lock, infra.Config{
-		OutboxHeartbeat: time.Second,
+		OutboxHeartbeat: 500 * time.Millisecond,
 		DbConfig:        dbConfig,
 		WebConfig: infra.WebConfig{
 			Port: ":8080",

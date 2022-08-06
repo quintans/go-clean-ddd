@@ -62,12 +62,19 @@ func (tm *Transaction[T]) Current(ctx context.Context, fn TxFunc[T]) error {
 		return ErrTxNotFound
 	}
 
+	return tm.apply(ctx, tx, fn)
+}
+
+func (tm *Transaction[T]) apply(ctx context.Context, tx T, fn TxFunc[T]) error {
 	popper, err := fn(ctx, tx)
 	if err != nil {
 		return faults.Wrap(err)
 	}
 	if popper != nil && tm.eventBus != nil {
-		return tm.eventBus.Publish(ctx, popper.PopEvents()...)
+		err := tm.eventBus.Publish(ctx, popper.PopEvents()...)
+		if err != nil {
+			return faults.Wrap(err)
+		}
 	}
 	return nil
 }
@@ -92,15 +99,9 @@ func (tm *Transaction[T]) makeTxHandler(ctx context.Context, fn TxFunc[T]) error
 		_ = tx.Rollback()
 	}()
 
-	popper, err := fn(c, tx)
+	err = tm.apply(c, tx, fn)
 	if err != nil {
 		return faults.Wrap(err)
-	}
-	if popper != nil && tm.eventBus != nil {
-		err := tm.eventBus.Publish(ctx, popper.PopEvents()...)
-		if err != nil {
-			return faults.Wrap(err)
-		}
 	}
 
 	_ = tx.Commit()
