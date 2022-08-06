@@ -2,6 +2,7 @@ package postgres
 
 import (
 	"context"
+	"errors"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/quintans/faults"
@@ -55,6 +56,9 @@ func (r RegistrationRepository) Update(ctx context.Context, id string, apply fun
 
 		err = apply(ctx, &registration)
 		if err != nil {
+			if errors.Is(err, domain.ErrNoChange) {
+				return nil, nil
+			}
 			return nil, faults.Wrap(err)
 		}
 

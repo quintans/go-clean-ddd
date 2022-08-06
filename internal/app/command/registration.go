@@ -66,7 +66,6 @@ func NewConfirmRegistration(registrationRepository app.RegistrationRepository) C
 
 func (h ConfirmRegistration) Handle(ctx context.Context, cmd ConfirmRegistrationCommand) error {
 	return h.registrationRepository.Update(ctx, cmd.Id, func(ctx context.Context, r *registration.Registration) error {
-		r.Verify()
-		return nil
+		return r.Verify()
 	})
 }

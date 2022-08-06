@@ -53,12 +53,13 @@ func RestoreRegistration(id string, email domain.Email, verified bool) (Registra
 	return r, nil
 }
 
-func (r *Registration) Verify() {
+func (r *Registration) Verify() error {
 	if r.verified {
-		return
+		return domain.ErrNoChange
 	}
 	r.verified = true
 	r.core.AddEvent(EmailVerified{Email: r.email})
+	return nil
 }
 
 func (r Registration) PopEvents() []eventbus.DomainEvent {

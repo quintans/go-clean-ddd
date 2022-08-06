@@ -61,6 +61,9 @@ func (r CustomerRepository) Update(ctx context.Context, id customer.CustomerID, 
 
 		err = apply(ctx, &cust)
 		if err != nil {
+			if errors.Is(err, domain.ErrNoChange) {
+				return nil, nil
+			}
 			return nil, faults.Wrap(err)
 		}
 
