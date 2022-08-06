@@ -1,0 +1,18 @@
+version: '3'
+
+tasks:
+  up:
+    cmds:
+      - docker-compose up -d
+
+  down:
+    cmds:
+      - docker-compose down --remove-orphans
+
+  check:
+    cmds:
+      - golangci-lint run
+      - go test ./...
+      - go mod tidy
+      - go get -u all
+      - go mod tidy
