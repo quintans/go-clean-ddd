@@ -16,26 +16,26 @@ type Customer struct {
 }
 
 // NewCustomer creates a customer
-func NewCustomer(ctx context.Context, email domain.Email, policy domain.UniqueEmailPolicy) (Customer, error) {
+func NewCustomer(ctx context.Context, email domain.Email, policy domain.UniqueEmailPolicy) (*Customer, error) {
 	if email.IsZero() {
-		return Customer{}, faults.New("email is undefined")
+		return nil, faults.New("email is undefined")
 	}
 	ok, err := policy.IsUnique(ctx, email)
 	if err != nil {
-		return Customer{}, faults.Wrapf(err, "failed to check uniqueness of email on new customer")
+		return nil, faults.Wrapf(err, "failed to check uniqueness of email on new customer")
 	}
 	if !ok {
-		return Customer{}, faults.Errorf("the provided e-mail %s is already taken unique", email)
+		return nil, faults.Errorf("the provided e-mail %s is already taken unique", email)
 	}
-	return Customer{
+	return &Customer{
 		id:    NewCustomerID(),
 		email: email,
 	}, nil
 }
 
 // RestoreCustomer instantiates customer from a previous stored state
-func RestoreCustomer(id CustomerID, fullName domain.FullName, email domain.Email) Customer {
-	return Customer{
+func RestoreCustomer(id CustomerID, fullName domain.FullName, email domain.Email) *Customer {
+	return &Customer{
 		id:       id,
 		email:    email,
 		fullName: fullName,
@@ -46,14 +46,14 @@ func (c *Customer) UpdateInfo(fullName domain.FullName) {
 	c.fullName = fullName
 }
 
-func (c Customer) ID() CustomerID {
+func (c *Customer) ID() CustomerID {
 	return c.id
 }
 
-func (c Customer) FullName() domain.FullName {
+func (c *Customer) FullName() domain.FullName {
 	return c.fullName
 }
 
-func (c Customer) Email() domain.Email {
+func (c *Customer) Email() domain.Email {
 	return c.email
 }

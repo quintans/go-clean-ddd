@@ -18,20 +18,20 @@ type Registration struct {
 	verified bool
 }
 
-func NewRegistration(ctx context.Context, email domain.Email, policy domain.UniqueEmailPolicy) (Registration, error) {
+func NewRegistration(ctx context.Context, email domain.Email, policy domain.UniqueEmailPolicy) (*Registration, error) {
 	if email.IsZero() {
-		return Registration{}, faults.New("registration email is undefined")
+		return nil, faults.New("registration email is undefined")
 	}
 	ok, err := policy.IsUnique(ctx, email)
 	if err != nil {
-		return Registration{}, faults.Wrapf(err, "failed to check uniqueness of email on registration")
+		return nil, faults.Wrapf(err, "failed to check uniqueness of email on registration")
 	}
 	if !ok {
-		return Registration{}, faults.Errorf("the provided e-mail %s is not unique", email)
+		return nil, faults.Errorf("the provided e-mail %s is not unique", email)
 	}
 
 	id := uuid.New().String()
-	r := Registration{
+	r := &Registration{
 		id:       id,
 		email:    email,
 		verified: false,
@@ -40,12 +40,12 @@ func NewRegistration(ctx context.Context, email domain.Email, policy domain.Uniq
 	return r, nil
 }
 
-func RestoreRegistration(id string, email domain.Email, verified bool) (Registration, error) {
+func RestoreRegistration(id string, email domain.Email, verified bool) (*Registration, error) {
 	if email.IsZero() {
-		return Registration{}, faults.New("registration email is undefined")
+		return nil, faults.New("registration email is undefined")
 	}
 
-	r := Registration{
+	r := &Registration{
 		id:       id,
 		email:    email,
 		verified: false,
@@ -58,22 +58,21 @@ func (r *Registration) Verify() error {
 		return domain.ErrNoChange
 	}
 	r.verified = true
-	r.core.AddEvent(EmailVerified{Email: r.email})
 	return nil
 }
 
-func (r Registration) PopEvents() []eventbus.DomainEvent {
+func (r *Registration) PopEvents() []eventbus.DomainEvent {
 	return r.core.PopEvents()
 }
 
-func (r Registration) ID() string {
+func (r *Registration) ID() string {
 	return r.id
 }
 
-func (r Registration) Email() domain.Email {
+func (r *Registration) Email() domain.Email {
 	return r.email
 }
 
-func (r Registration) Verified() bool {
+func (r *Registration) Verified() bool {
 	return r.verified
 }

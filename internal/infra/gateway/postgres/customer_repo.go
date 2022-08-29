@@ -31,7 +31,7 @@ func NewCustomerRepository(trans *transaction.Transaction[*sqlx.Tx]) CustomerRep
 	}
 }
 
-func (r CustomerRepository) Create(ctx context.Context, c customer.Customer) error {
+func (r CustomerRepository) Create(ctx context.Context, c *customer.Customer) error {
 	err := r.trans.Current(ctx, func(ctx context.Context, tx *sqlx.Tx) (transaction.EventPopper, error) {
 		_, err := tx.ExecContext(
 			ctx,
@@ -47,19 +47,20 @@ func (r CustomerRepository) Create(ctx context.Context, c customer.Customer) err
 	return errorMap(err)
 }
 
-func (r CustomerRepository) Update(ctx context.Context, id customer.CustomerID, apply func(context.Context, *customer.Customer) error) error {
+func (r CustomerRepository) Update(ctx context.Context, id customer.CustomerID, apply func(context.Context, *customer.Customer) error) (*customer.Customer, error) {
+	var cust *customer.Customer
 	err := r.trans.Current(ctx, func(ctx context.Context, tx *sqlx.Tx) (transaction.EventPopper, error) {
 		c, err := r.getByID(ctx, tx, id.String())
 		if err != nil {
 			return nil, faults.Wrap(err)
 		}
 
-		cust, err := toDomainCustomer(c)
+		cust, err = toDomainCustomer(c)
 		if err != nil {
 			return nil, faults.Wrap(err)
 		}
 
-		err = apply(ctx, &cust)
+		err = apply(ctx, cust)
 		if err != nil {
 			if errors.Is(err, domain.ErrNoChange) {
 				return nil, nil
@@ -71,9 +72,9 @@ func (r CustomerRepository) Update(ctx context.Context, id customer.CustomerID, 
 		res, err := tx.ExecContext(
 			ctx,
 			"UPDATE customers SET first_name=$1, last_name=$2, email=$3, version=version+1 WHERE id=$4 AND version=$5",
-			c.FirstName,
-			c.LastName,
-			c.Email,
+			cust.FullName().FirstName(),
+			cust.FullName().LastName(),
+			cust.Email(),
 			c.ID,
 			c.Version,
 		)
@@ -89,8 +90,10 @@ func (r CustomerRepository) Update(ctx context.Context, id customer.CustomerID, 
 		}
 		return nil, nil
 	})
-
-	return errorMap(err)
+	if err != nil {
+		return nil, errorMap(err)
+	}
+	return cust, nil
 }
 
 func (r CustomerRepository) getByID(ctx context.Context, tx *sqlx.Tx, id string) (Customer, error) {
@@ -115,8 +118,8 @@ func errorMap(err error) error {
 	return faults.Wrap(err)
 }
 
-func toDomainCustomers(cs []Customer) ([]customer.Customer, error) {
-	dcs := make([]customer.Customer, len(cs))
+func toDomainCustomers(cs []Customer) ([]*customer.Customer, error) {
+	dcs := make([]*customer.Customer, len(cs))
 	for k, v := range cs {
 		dc, err := toDomainCustomer(v)
 		if err != nil {
@@ -127,18 +130,18 @@ func toDomainCustomers(cs []Customer) ([]customer.Customer, error) {
 	return dcs, nil
 }
 
-func toDomainCustomer(c Customer) (customer.Customer, error) {
+func toDomainCustomer(c Customer) (*customer.Customer, error) {
 	id, err := customer.ParseCustomerID(c.ID)
 	if err != nil {
-		return customer.Customer{}, faults.Wrap(err)
+		return nil, faults.Wrap(err)
 	}
 	fullName, err := domain.NewFullName(c.FirstName, c.LastName)
 	if err != nil {
-		return customer.Customer{}, faults.Wrap(err)
+		return nil, faults.Wrap(err)
 	}
 	email, err := domain.NewEmail(c.Email)
 	if err != nil {
-		return customer.Customer{}, faults.Wrap(err)
+		return nil, faults.Wrap(err)
 	}
 	return customer.RestoreCustomer(id, fullName, email), nil
 }

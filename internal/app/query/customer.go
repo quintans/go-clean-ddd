@@ -38,7 +38,7 @@ func (r AllCustomers) Handle(ctx context.Context) ([]CustomerDTO, error) {
 	return toCustomerDTOs(customers), nil
 }
 
-func toCustomerDTOs(in []customer.Customer) []CustomerDTO {
+func toCustomerDTOs(in []*customer.Customer) []CustomerDTO {
 	out := make([]CustomerDTO, len(in))
 	for k, v := range in {
 		out[k] = toCustomerDTO(v)
@@ -46,7 +46,7 @@ func toCustomerDTOs(in []customer.Customer) []CustomerDTO {
 	return out
 }
 
-func toCustomerDTO(c customer.Customer) CustomerDTO {
+func toCustomerDTO(c *customer.Customer) CustomerDTO {
 	return CustomerDTO{
 		Id:        c.ID().String(),
 		Email:     c.Email().String(),

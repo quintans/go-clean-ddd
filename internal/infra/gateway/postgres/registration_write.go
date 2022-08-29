@@ -2,7 +2,6 @@ package postgres
 
 import (
 	"context"
-	"errors"
 
 	"github.com/jmoiron/sqlx"
 	"github.com/quintans/faults"
@@ -27,7 +26,7 @@ func NewRegistrationRepository(trans *transaction.Transaction[*sqlx.Tx]) Registr
 	}
 }
 
-func (r RegistrationRepository) Create(ctx context.Context, c registration.Registration) error {
+func (r RegistrationRepository) Create(ctx context.Context, c *registration.Registration) error {
 	err := r.trans.Current(ctx, func(ctx context.Context, tx *sqlx.Tx) (transaction.EventPopper, error) {
 		_, err := tx.ExecContext(
 			ctx,
@@ -42,23 +41,21 @@ func (r RegistrationRepository) Create(ctx context.Context, c registration.Regis
 	return errorMap(err)
 }
 
-func (r RegistrationRepository) Update(ctx context.Context, id string, apply func(context.Context, *registration.Registration) error) error {
+func (r RegistrationRepository) Update(ctx context.Context, id string, apply func(context.Context, *registration.Registration) error) (*registration.Registration, error) {
+	var registration *registration.Registration
 	err := r.trans.Current(ctx, func(ctx context.Context, tx *sqlx.Tx) (transaction.EventPopper, error) {
 		reg, err := r.getByID(ctx, tx, id)
 		if err != nil {
 			return nil, faults.Wrap(err)
 		}
 
-		registration, err := toDomainRegistration(reg)
+		registration, err = toDomainRegistration(reg)
 		if err != nil {
 			return nil, faults.Wrap(err)
 		}
 
-		err = apply(ctx, &registration)
+		err = apply(ctx, registration)
 		if err != nil {
-			if errors.Is(err, domain.ErrNoChange) {
-				return nil, nil
-			}
 			return nil, faults.Wrap(err)
 		}
 
@@ -73,8 +70,11 @@ func (r RegistrationRepository) Update(ctx context.Context, id string, apply fun
 		}
 		return registration, nil
 	})
+	if err != nil {
+		return nil, errorMap(err)
+	}
+	return registration, nil
 
-	return errorMap(err)
 }
 
 func (r RegistrationRepository) getByID(ctx context.Context, tx *sqlx.Tx, id string) (Registration, error) {
@@ -88,10 +88,10 @@ func (r RegistrationRepository) getByID(ctx context.Context, tx *sqlx.Tx, id str
 	return reg, errorMap(err)
 }
 
-func toDomainRegistration(e Registration) (registration.Registration, error) {
+func toDomainRegistration(e Registration) (*registration.Registration, error) {
 	email, err := domain.NewEmail(e.Email)
 	if err != nil {
-		return registration.Registration{}, faults.Wrap(err)
+		return nil, faults.Wrap(err)
 	}
 	return registration.RestoreRegistration(e.ID, email, e.Verified)
 }

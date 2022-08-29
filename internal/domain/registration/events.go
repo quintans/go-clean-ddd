@@ -12,13 +12,3 @@ type RegistrationCreatedEvent struct {
 func (e RegistrationCreatedEvent) Kind() string {
 	return EventRegistrationCreated
 }
-
-const EventEmailVerified = "EmailVerified"
-
-type EmailVerified struct {
-	Email domain.Email
-}
-
-func (e EmailVerified) Kind() string {
-	return EventEmailVerified
-}

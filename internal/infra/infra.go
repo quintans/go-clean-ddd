@@ -6,7 +6,6 @@ import (
 	"github.com/jmoiron/sqlx"
 	"github.com/quintans/go-clean-ddd/fake"
 	"github.com/quintans/go-clean-ddd/internal/app/command"
-	"github.com/quintans/go-clean-ddd/internal/app/event"
 	"github.com/quintans/go-clean-ddd/internal/app/query"
 	"github.com/quintans/go-clean-ddd/internal/domain/registration"
 	"github.com/quintans/go-clean-ddd/internal/infra/controller/fakesub"
@@ -30,12 +29,10 @@ func Start(ctx context.Context, lock *latch.CountDownLatch, cfg Config) {
 	}()
 
 	bus := eventbus.New()
-	trans := transaction.New[*sqlx.Tx](
-		bus,
-		func(ctx context.Context) (transaction.Tx, error) {
-			return db.Beginx()
-		},
-	)
+	txFactory := func(ctx context.Context) (transaction.Tx, error) {
+		return db.Beginx()
+	}
+	trans := transaction.New[*sqlx.Tx](bus, txFactory)
 	customerWrite := postgres.NewCustomerRepository(trans)
 	customerRead := postgres.NewCustomerViewRepository(db)
 
@@ -48,9 +45,9 @@ func Start(ctx context.Context, lock *latch.CountDownLatch, cfg Config) {
 
 	registrationWrite := postgres.NewRegistrationRepository(trans)
 	createRegistration := command.NewCreateRegistration(registrationWrite, customerRead)
-	confirmRegistration := command.NewConfirmRegistration(registrationWrite)
 
-	bus.Subscribe(registration.EventEmailVerified, event.NewEmailVerifiedHandler(customerWrite, customerRead).Handle)
+	uow := transaction.NewUnitOfWorkManager[*sqlx.Tx](txFactory)
+	confirmRegistration := command.NewConfirmRegistration(uow, registrationWrite, customerWrite, customerRead)
 
 	registrationController := web.NewRegistrationController(createRegistration, confirmRegistration)
 	StartWebServer(ctx, lock, cfg.WebConfig, customerController, registrationController)

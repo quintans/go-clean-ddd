@@ -20,8 +20,8 @@ type NewRegistration struct {
 
 // RegistrationRepository interface for handling the persistence of RegistrationRepository
 type RegistrationRepository interface {
-	Create(context.Context, registration.Registration) error
-	Update(context.Context, string, func(context.Context, *registration.Registration) error) error
+	Create(context.Context, *registration.Registration) error
+	Update(context.Context, string, func(context.Context, *registration.Registration) error) (*registration.Registration, error)
 }
 
 var (
@@ -31,12 +31,12 @@ var (
 
 // CustomerRepository interface for handling the persistence of Customer
 type CustomerRepository interface {
-	Create(context.Context, customer.Customer) error
-	Update(context.Context, customer.CustomerID, func(context.Context, *customer.Customer) error) error
+	Create(context.Context, *customer.Customer) error
+	Update(context.Context, customer.CustomerID, func(context.Context, *customer.Customer) error) (*customer.Customer, error)
 }
 
 // CustomerViewRepository interface for customer reads (queries)
 type CustomerViewRepository interface {
-	GetAll(context.Context) ([]customer.Customer, error)
-	GetByEmail(ctx context.Context, email domain.Email) (customer.Customer, error)
+	GetAll(context.Context) ([]*customer.Customer, error)
+	GetByEmail(ctx context.Context, email domain.Email) (*customer.Customer, error)
 }

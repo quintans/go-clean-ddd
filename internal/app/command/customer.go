@@ -40,8 +40,9 @@ func (r UpdateCustomer) Handle(ctx context.Context, cmd UpdateCustomerCommand) e
 		return faults.Wrap(err)
 	}
 
-	return r.customerRepository.Update(ctx, id, func(ctx context.Context, c *customer.Customer) error {
+	_, err = r.customerRepository.Update(ctx, id, func(ctx context.Context, c *customer.Customer) error {
 		c.UpdateInfo(fullName)
 		return nil
 	})
+	return err
 }
