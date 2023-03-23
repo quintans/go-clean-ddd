@@ -93,5 +93,5 @@ func toDomainRegistration(e Registration) (registration.Registration, error) {
 	if err != nil {
 		return registration.Registration{}, faults.Wrap(err)
 	}
-	return registration.RestoreRegistration(e.ID, email, e.Verified)
+	return registration.Hydrate(e.ID, email, e.Verified)
 }

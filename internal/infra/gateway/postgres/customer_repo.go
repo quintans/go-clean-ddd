@@ -140,5 +140,5 @@ func toDomainCustomer(c Customer) (customer.Customer, error) {
 	if err != nil {
 		return customer.Customer{}, faults.Wrap(err)
 	}
-	return customer.RestoreCustomer(id, fullName, email), nil
+	return customer.Hydrate(id, fullName, email), nil
 }

@@ -40,7 +40,7 @@ func NewRegistration(ctx context.Context, email domain.Email, policy domain.Uniq
 	return r, nil
 }
 
-func RestoreRegistration(id string, email domain.Email, verified bool) (Registration, error) {
+func Hydrate(id string, email domain.Email, verified bool) (Registration, error) {
 	if email.IsZero() {
 		return Registration{}, faults.New("registration email is undefined")
 	}

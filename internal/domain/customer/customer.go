@@ -33,8 +33,8 @@ func NewCustomer(ctx context.Context, email domain.Email, policy domain.UniqueEm
 	}, nil
 }
 
-// RestoreCustomer instantiates customer from a previous stored state
-func RestoreCustomer(id CustomerID, fullName domain.FullName, email domain.Email) Customer {
+// Hydrate instantiates customer from a previous stored state
+func Hydrate(id CustomerID, fullName domain.FullName, email domain.Email) Customer {
 	return Customer{
 		id:       id,
 		email:    email,
